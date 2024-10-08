@@ -1,6 +1,8 @@
 package wire
 
 import (
+	"bytes"
+
 	"github.com/quic-go/quic-go/internal/protocol"
 	"github.com/quic-go/quic-go/quicvarint"
 )
@@ -10,21 +12,21 @@ type RetireConnectionIDFrame struct {
 	SequenceNumber uint64
 }
 
-func parseRetireConnectionIDFrame(b []byte, _ protocol.Version) (*RetireConnectionIDFrame, int, error) {
-	seq, l, err := quicvarint.Parse(b)
+func parseRetireConnectionIDFrame(r *bytes.Reader, _ protocol.VersionNumber) (*RetireConnectionIDFrame, error) {
+	seq, err := quicvarint.Read(r)
 	if err != nil {
-		return nil, 0, replaceUnexpectedEOF(err)
+		return nil, err
 	}
-	return &RetireConnectionIDFrame{SequenceNumber: seq}, l, nil
+	return &RetireConnectionIDFrame{SequenceNumber: seq}, nil
 }
 
-func (f *RetireConnectionIDFrame) Append(b []byte, _ protocol.Version) ([]byte, error) {
+func (f *RetireConnectionIDFrame) Append(b []byte, _ protocol.VersionNumber) ([]byte, error) {
 	b = append(b, retireConnectionIDFrameType)
 	b = quicvarint.Append(b, f.SequenceNumber)
 	return b, nil
 }
 
 // Length of a written frame
-func (f *RetireConnectionIDFrame) Length(protocol.Version) protocol.ByteCount {
-	return 1 + protocol.ByteCount(quicvarint.Len(f.SequenceNumber))
+func (f *RetireConnectionIDFrame) Length(protocol.VersionNumber) protocol.ByteCount {
+	return 1 + quicvarint.Len(f.SequenceNumber)
 }

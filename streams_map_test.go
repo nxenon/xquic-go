@@ -14,6 +14,7 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"go.uber.org/mock/gomock"
 )
 
 func (e streamError) TestError() error {
@@ -32,14 +33,11 @@ type streamMapping struct {
 }
 
 func expectTooManyStreamsError(err error) {
-	ExpectWithOffset(1, err).To(MatchError(&StreamLimitReachedError{}))
+	ExpectWithOffset(1, err).To(HaveOccurred())
+	ExpectWithOffset(1, err.Error()).To(Equal(errTooManyOpenStreams.Error()))
 	nerr, ok := err.(net.Error)
 	ExpectWithOffset(1, ok).To(BeTrue())
 	ExpectWithOffset(1, nerr.Timeout()).To(BeFalse())
-	//nolint:staticcheck // SA1019
-	// In older versions of quic-go, the stream limit error was documented to be a net.Error.Temporary.
-	// This function was since deprecated, but we keep the existing behavior.
-	ExpectWithOffset(1, nerr.Temporary()).To(BeTrue())
 }
 
 var _ = Describe("Streams Map", func() {
@@ -71,9 +69,8 @@ var _ = Describe("Streams Map", func() {
 
 		Context(perspective.String(), func() {
 			var (
-				m                   *streamsMap
-				mockSender          *MockStreamSender
-				queuedControlFrames []wire.Frame
+				m          *streamsMap
+				mockSender *MockStreamSender
 			)
 
 			const (
@@ -89,17 +86,8 @@ var _ = Describe("Streams Map", func() {
 			}
 
 			BeforeEach(func() {
-				queuedControlFrames = []wire.Frame{}
 				mockSender = NewMockStreamSender(mockCtrl)
-				m = newStreamsMap(
-					context.Background(),
-					mockSender,
-					func(f wire.Frame) { queuedControlFrames = append(queuedControlFrames, f) },
-					newFlowController,
-					MaxBidiStreamNum,
-					MaxUniStreamNum,
-					perspective,
-				)
+				m = newStreamsMap(mockSender, newFlowController, MaxBidiStreamNum, MaxUniStreamNum, perspective).(*streamsMap)
 			})
 
 			Context("opening", func() {
@@ -149,7 +137,10 @@ var _ = Describe("Streams Map", func() {
 			})
 
 			Context("deleting", func() {
-				BeforeEach(func() { allowUnlimitedStreams() })
+				BeforeEach(func() {
+					mockSender.EXPECT().queueControlFrame(gomock.Any()).AnyTimes()
+					allowUnlimitedStreams()
+				})
 
 				It("deletes outgoing bidirectional streams", func() {
 					id := ids.firstOutgoingBidiStream
@@ -345,6 +336,7 @@ var _ = Describe("Streams Map", func() {
 			})
 
 			It("processes the parameter for outgoing streams", func() {
+				mockSender.EXPECT().queueControlFrame(gomock.Any())
 				_, err := m.OpenStream()
 				expectTooManyStreamsError(err)
 				m.UpdateLimits(&wire.TransportParameters{
@@ -352,6 +344,7 @@ var _ = Describe("Streams Map", func() {
 					MaxUniStreamNum:  8,
 				})
 
+				mockSender.EXPECT().queueControlFrame(gomock.Any()).Times(2)
 				// test we can only 5 bidirectional streams
 				for i := 0; i < 5; i++ {
 					str, err := m.OpenStream()
@@ -368,7 +361,6 @@ var _ = Describe("Streams Map", func() {
 				}
 				_, err = m.OpenUniStream()
 				expectTooManyStreamsError(err)
-				Expect(queuedControlFrames).To(HaveLen(3))
 			})
 
 			if perspective == protocol.PerspectiveClient {
@@ -404,6 +396,10 @@ var _ = Describe("Streams Map", func() {
 			}
 
 			Context("handling MAX_STREAMS frames", func() {
+				BeforeEach(func() {
+					mockSender.EXPECT().queueControlFrame(gomock.Any()).AnyTimes()
+				})
+
 				It("processes IDs for outgoing bidirectional streams", func() {
 					_, err := m.OpenStream()
 					expectTooManyStreamsError(err)
@@ -439,13 +435,11 @@ var _ = Describe("Streams Map", func() {
 					Expect(err).ToNot(HaveOccurred())
 					_, err = m.AcceptStream(context.Background())
 					Expect(err).ToNot(HaveOccurred())
+					mockSender.EXPECT().queueControlFrame(&wire.MaxStreamsFrame{
+						Type:         protocol.StreamTypeBidi,
+						MaxStreamNum: MaxBidiStreamNum + 1,
+					})
 					Expect(m.DeleteStream(ids.firstIncomingBidiStream)).To(Succeed())
-					Expect(queuedControlFrames).To(Equal([]wire.Frame{
-						&wire.MaxStreamsFrame{
-							Type:         protocol.StreamTypeBidi,
-							MaxStreamNum: MaxBidiStreamNum + 1,
-						},
-					}))
 				})
 
 				It("sends a MAX_STREAMS frame for unidirectional streams", func() {
@@ -453,13 +447,11 @@ var _ = Describe("Streams Map", func() {
 					Expect(err).ToNot(HaveOccurred())
 					_, err = m.AcceptUniStream(context.Background())
 					Expect(err).ToNot(HaveOccurred())
+					mockSender.EXPECT().queueControlFrame(&wire.MaxStreamsFrame{
+						Type:         protocol.StreamTypeUni,
+						MaxStreamNum: MaxUniStreamNum + 1,
+					})
 					Expect(m.DeleteStream(ids.firstIncomingUniStream)).To(Succeed())
-					Expect(queuedControlFrames).To(Equal([]wire.Frame{
-						&wire.MaxStreamsFrame{
-							Type:         protocol.StreamTypeUni,
-							MaxStreamNum: MaxUniStreamNum + 1,
-						},
-					}))
 				})
 			})
 
@@ -482,6 +474,7 @@ var _ = Describe("Streams Map", func() {
 
 			if perspective == protocol.PerspectiveClient {
 				It("resets for 0-RTT", func() {
+					mockSender.EXPECT().queueControlFrame(gomock.Any()).AnyTimes()
 					m.ResetFor0RTT()
 					// make sure that calls to open / accept streams fail
 					_, err := m.OpenStream()

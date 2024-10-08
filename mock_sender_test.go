@@ -5,7 +5,6 @@
 //
 //	mockgen -typed -build_flags=-tags=gomock -package quic -self_package github.com/quic-go/quic-go -destination mock_sender_test.go github.com/quic-go/quic-go Sender
 //
-
 // Package quic is a generated GoMock package.
 package quic
 
@@ -48,31 +47,31 @@ func (m *MockSender) Available() <-chan struct{} {
 }
 
 // Available indicates an expected call of Available.
-func (mr *MockSenderMockRecorder) Available() *MockSenderAvailableCall {
+func (mr *MockSenderMockRecorder) Available() *SenderAvailableCall {
 	mr.mock.ctrl.T.Helper()
 	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Available", reflect.TypeOf((*MockSender)(nil).Available))
-	return &MockSenderAvailableCall{Call: call}
+	return &SenderAvailableCall{Call: call}
 }
 
-// MockSenderAvailableCall wrap *gomock.Call
-type MockSenderAvailableCall struct {
+// SenderAvailableCall wrap *gomock.Call
+type SenderAvailableCall struct {
 	*gomock.Call
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *MockSenderAvailableCall) Return(arg0 <-chan struct{}) *MockSenderAvailableCall {
+func (c *SenderAvailableCall) Return(arg0 <-chan struct{}) *SenderAvailableCall {
 	c.Call = c.Call.Return(arg0)
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockSenderAvailableCall) Do(f func() <-chan struct{}) *MockSenderAvailableCall {
+func (c *SenderAvailableCall) Do(f func() <-chan struct{}) *SenderAvailableCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockSenderAvailableCall) DoAndReturn(f func() <-chan struct{}) *MockSenderAvailableCall {
+func (c *SenderAvailableCall) DoAndReturn(f func() <-chan struct{}) *SenderAvailableCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
@@ -84,31 +83,31 @@ func (m *MockSender) Close() {
 }
 
 // Close indicates an expected call of Close.
-func (mr *MockSenderMockRecorder) Close() *MockSenderCloseCall {
+func (mr *MockSenderMockRecorder) Close() *SenderCloseCall {
 	mr.mock.ctrl.T.Helper()
 	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Close", reflect.TypeOf((*MockSender)(nil).Close))
-	return &MockSenderCloseCall{Call: call}
+	return &SenderCloseCall{Call: call}
 }
 
-// MockSenderCloseCall wrap *gomock.Call
-type MockSenderCloseCall struct {
+// SenderCloseCall wrap *gomock.Call
+type SenderCloseCall struct {
 	*gomock.Call
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *MockSenderCloseCall) Return() *MockSenderCloseCall {
+func (c *SenderCloseCall) Return() *SenderCloseCall {
 	c.Call = c.Call.Return()
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockSenderCloseCall) Do(f func()) *MockSenderCloseCall {
+func (c *SenderCloseCall) Do(f func()) *SenderCloseCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockSenderCloseCall) DoAndReturn(f func()) *MockSenderCloseCall {
+func (c *SenderCloseCall) DoAndReturn(f func()) *SenderCloseCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
@@ -122,31 +121,31 @@ func (m *MockSender) Run() error {
 }
 
 // Run indicates an expected call of Run.
-func (mr *MockSenderMockRecorder) Run() *MockSenderRunCall {
+func (mr *MockSenderMockRecorder) Run() *SenderRunCall {
 	mr.mock.ctrl.T.Helper()
 	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Run", reflect.TypeOf((*MockSender)(nil).Run))
-	return &MockSenderRunCall{Call: call}
+	return &SenderRunCall{Call: call}
 }
 
-// MockSenderRunCall wrap *gomock.Call
-type MockSenderRunCall struct {
+// SenderRunCall wrap *gomock.Call
+type SenderRunCall struct {
 	*gomock.Call
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *MockSenderRunCall) Return(arg0 error) *MockSenderRunCall {
+func (c *SenderRunCall) Return(arg0 error) *SenderRunCall {
 	c.Call = c.Call.Return(arg0)
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockSenderRunCall) Do(f func() error) *MockSenderRunCall {
+func (c *SenderRunCall) Do(f func() error) *SenderRunCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockSenderRunCall) DoAndReturn(f func() error) *MockSenderRunCall {
+func (c *SenderRunCall) DoAndReturn(f func() error) *SenderRunCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
@@ -158,31 +157,31 @@ func (m *MockSender) Send(arg0 *packetBuffer, arg1 uint16, arg2 protocol.ECN) {
 }
 
 // Send indicates an expected call of Send.
-func (mr *MockSenderMockRecorder) Send(arg0, arg1, arg2 any) *MockSenderSendCall {
+func (mr *MockSenderMockRecorder) Send(arg0, arg1, arg2 any) *SenderSendCall {
 	mr.mock.ctrl.T.Helper()
 	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Send", reflect.TypeOf((*MockSender)(nil).Send), arg0, arg1, arg2)
-	return &MockSenderSendCall{Call: call}
+	return &SenderSendCall{Call: call}
 }
 
-// MockSenderSendCall wrap *gomock.Call
-type MockSenderSendCall struct {
+// SenderSendCall wrap *gomock.Call
+type SenderSendCall struct {
 	*gomock.Call
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *MockSenderSendCall) Return() *MockSenderSendCall {
+func (c *SenderSendCall) Return() *SenderSendCall {
 	c.Call = c.Call.Return()
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockSenderSendCall) Do(f func(*packetBuffer, uint16, protocol.ECN)) *MockSenderSendCall {
+func (c *SenderSendCall) Do(f func(*packetBuffer, uint16, protocol.ECN)) *SenderSendCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockSenderSendCall) DoAndReturn(f func(*packetBuffer, uint16, protocol.ECN)) *MockSenderSendCall {
+func (c *SenderSendCall) DoAndReturn(f func(*packetBuffer, uint16, protocol.ECN)) *SenderSendCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
@@ -196,31 +195,31 @@ func (m *MockSender) WouldBlock() bool {
 }
 
 // WouldBlock indicates an expected call of WouldBlock.
-func (mr *MockSenderMockRecorder) WouldBlock() *MockSenderWouldBlockCall {
+func (mr *MockSenderMockRecorder) WouldBlock() *SenderWouldBlockCall {
 	mr.mock.ctrl.T.Helper()
 	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "WouldBlock", reflect.TypeOf((*MockSender)(nil).WouldBlock))
-	return &MockSenderWouldBlockCall{Call: call}
+	return &SenderWouldBlockCall{Call: call}
 }
 
-// MockSenderWouldBlockCall wrap *gomock.Call
-type MockSenderWouldBlockCall struct {
+// SenderWouldBlockCall wrap *gomock.Call
+type SenderWouldBlockCall struct {
 	*gomock.Call
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *MockSenderWouldBlockCall) Return(arg0 bool) *MockSenderWouldBlockCall {
+func (c *SenderWouldBlockCall) Return(arg0 bool) *SenderWouldBlockCall {
 	c.Call = c.Call.Return(arg0)
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockSenderWouldBlockCall) Do(f func() bool) *MockSenderWouldBlockCall {
+func (c *SenderWouldBlockCall) Do(f func() bool) *SenderWouldBlockCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockSenderWouldBlockCall) DoAndReturn(f func() bool) *MockSenderWouldBlockCall {
+func (c *SenderWouldBlockCall) DoAndReturn(f func() bool) *SenderWouldBlockCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }

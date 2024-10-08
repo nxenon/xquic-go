@@ -1,18 +1,19 @@
 package protocol
 
 import (
-	"testing"
-
-	"github.com/stretchr/testify/require"
+	. "github.com/onsi/ginkgo/v2"
+	. "github.com/onsi/gomega"
 )
 
-func TestPerspectiveOpposite(t *testing.T) {
-	require.Equal(t, PerspectiveServer, PerspectiveClient.Opposite())
-	require.Equal(t, PerspectiveClient, PerspectiveServer.Opposite())
-}
+var _ = Describe("Perspective", func() {
+	It("has a string representation", func() {
+		Expect(PerspectiveClient.String()).To(Equal("Client"))
+		Expect(PerspectiveServer.String()).To(Equal("Server"))
+		Expect(Perspective(0).String()).To(Equal("invalid perspective"))
+	})
 
-func TestPerspectiveStringer(t *testing.T) {
-	require.Equal(t, "client", PerspectiveClient.String())
-	require.Equal(t, "server", PerspectiveServer.String())
-	require.Equal(t, "invalid perspective", Perspective(0).String())
-}
+	It("returns the opposite", func() {
+		Expect(PerspectiveClient.Opposite()).To(Equal(PerspectiveServer))
+		Expect(PerspectiveServer.Opposite()).To(Equal(PerspectiveClient))
+	})
+})

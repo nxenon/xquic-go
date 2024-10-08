@@ -3,23 +3,24 @@ package utils
 import (
 	"bufio"
 	"bytes"
-	"testing"
 
-	"github.com/stretchr/testify/require"
+	. "github.com/onsi/ginkgo/v2"
+	. "github.com/onsi/gomega"
 )
 
 type nopCloser struct{}
 
 func (nopCloser) Close() error { return nil }
 
-func TestBufferedWriteCloserFlushBeforeClosing(t *testing.T) {
-	buf := &bytes.Buffer{}
+var _ = Describe("buffered io.WriteCloser", func() {
+	It("flushes before closing", func() {
+		buf := &bytes.Buffer{}
 
-	w := bufio.NewWriter(buf)
-	wc := NewBufferedWriteCloser(w, &nopCloser{})
-	_, err := wc.Write([]byte("foobar"))
-	require.NoError(t, err)
-	require.Zero(t, buf.Len())
-	require.NoError(t, wc.Close())
-	require.Equal(t, "foobar", buf.String())
-}
+		w := bufio.NewWriter(buf)
+		wc := NewBufferedWriteCloser(w, &nopCloser{})
+		wc.Write([]byte("foobar"))
+		Expect(buf.Len()).To(BeZero())
+		Expect(wc.Close()).To(Succeed())
+		Expect(buf.String()).To(Equal("foobar"))
+	})
+})

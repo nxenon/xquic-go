@@ -46,8 +46,8 @@ func main() {
 			InsecureSkipVerify: *insecure,
 			KeyLogWriter:       keyLog,
 		},
-		QUICConfig: &quic.Config{
-			Tracer: qlog.DefaultConnectionTracer,
+		QuicConfig: &quic.Config{
+			Tracer: qlog.DefaultTracer,
 		},
 	}
 	defer roundTripper.Close()

@@ -59,9 +59,9 @@ var _ = Describe("Base Flow controller", func() {
 		})
 
 		It("does not decrease the flow control window", func() {
-			Expect(controller.UpdateSendWindow(20)).To(BeTrue())
+			controller.UpdateSendWindow(20)
 			Expect(controller.sendWindowSize()).To(Equal(protocol.ByteCount(20)))
-			Expect(controller.UpdateSendWindow(10)).To(BeFalse())
+			controller.UpdateSendWindow(10)
 			Expect(controller.sendWindowSize()).To(Equal(protocol.ByteCount(20)))
 		})
 

@@ -19,19 +19,14 @@ var _ = Describe("Capsule", func() {
 		ct, r, err := ParseCapsule(bytes.NewReader(b))
 		Expect(err).ToNot(HaveOccurred())
 		Expect(ct).To(BeEquivalentTo(1337))
-		buf := make([]byte, 3)
-		n, err := r.Read(buf)
+		val, err := io.ReadAll(r)
 		Expect(err).ToNot(HaveOccurred())
-		Expect(n).To(Equal(3))
-		Expect(buf).To(Equal([]byte("foo")))
-		data, err := io.ReadAll(r)
-		Expect(err).ToNot(HaveOccurred())
-		Expect(data).To(Equal([]byte("bar")))
+		Expect(string(val)).To(Equal("foobar"))
 	})
 
 	It("writes capsules", func() {
 		var buf bytes.Buffer
-		Expect(WriteCapsule(&buf, 1337, []byte("foobar"))).To(Succeed())
+		WriteCapsule(&buf, 1337, []byte("foobar"))
 
 		ct, r, err := ParseCapsule(&buf)
 		Expect(err).ToNot(HaveOccurred())
@@ -49,11 +44,7 @@ var _ = Describe("Capsule", func() {
 		for i := range b {
 			ct, r, err := ParseCapsule(bytes.NewReader(b[:i]))
 			if err != nil {
-				if i == 0 {
-					Expect(err).To(MatchError(io.EOF))
-				} else {
-					Expect(err).To(MatchError(io.ErrUnexpectedEOF))
-				}
+				Expect(err).To(MatchError(io.ErrUnexpectedEOF))
 				continue
 			}
 			Expect(ct).To(BeEquivalentTo(1337))

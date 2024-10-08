@@ -1,6 +1,7 @@
 package handshake
 
 import (
+	"bytes"
 	"context"
 	"crypto/tls"
 	"errors"
@@ -31,7 +32,7 @@ type cryptoSetup struct {
 
 	events []Event
 
-	version protocol.Version
+	version protocol.VersionNumber
 
 	ourParams  *wire.TransportParameters
 	peerParams *wire.TransportParameters
@@ -75,7 +76,7 @@ func NewCryptoSetupClient(
 	rttStats *utils.RTTStats,
 	tracer *logging.ConnectionTracer,
 	logger utils.Logger,
-	version protocol.Version,
+	version protocol.VersionNumber,
 ) CryptoSetup {
 	cs := newCryptoSetup(
 		connID,
@@ -110,7 +111,7 @@ func NewCryptoSetupServer(
 	rttStats *utils.RTTStats,
 	tracer *logging.ConnectionTracer,
 	logger utils.Logger,
-	version protocol.Version,
+	version protocol.VersionNumber,
 ) CryptoSetup {
 	cs := newCryptoSetup(
 		connID,
@@ -123,10 +124,42 @@ func NewCryptoSetupServer(
 	)
 	cs.allow0RTT = allow0RTT
 
-	tlsConf = qtls.SetupConfigForServer(tlsConf, localAddr, remoteAddr, cs.getDataForSessionTicket, cs.handleSessionTicket)
-	cs.tlsConf = tlsConf
-	cs.conn = tls.QUICServer(&tls.QUICConfig{TLSConfig: tlsConf})
+	quicConf := &tls.QUICConfig{TLSConfig: tlsConf}
+	qtls.SetupConfigForServer(quicConf, cs.allow0RTT, cs.getDataForSessionTicket, cs.handleSessionTicket)
+	addConnToClientHelloInfo(quicConf.TLSConfig, localAddr, remoteAddr)
+
+	cs.tlsConf = quicConf.TLSConfig
+	cs.conn = tls.QUICServer(quicConf)
+
 	return cs
+}
+
+// The tls.Config contains two callbacks that pass in a tls.ClientHelloInfo.
+// Since crypto/tls doesn't do it, we need to make sure to set the Conn field with a fake net.Conn
+// that allows the caller to get the local and the remote address.
+func addConnToClientHelloInfo(conf *tls.Config, localAddr, remoteAddr net.Addr) {
+	if conf.GetConfigForClient != nil {
+		gcfc := conf.GetConfigForClient
+		conf.GetConfigForClient = func(info *tls.ClientHelloInfo) (*tls.Config, error) {
+			info.Conn = &conn{localAddr: localAddr, remoteAddr: remoteAddr}
+			c, err := gcfc(info)
+			if c != nil {
+				c = c.Clone()
+				// This won't be necessary anymore once https://github.com/golang/go/issues/63722 is accepted.
+				c.MinVersion = tls.VersionTLS13
+				// We're returning a tls.Config here, so we need to apply this recursively.
+				addConnToClientHelloInfo(c, localAddr, remoteAddr)
+			}
+			return c, err
+		}
+	}
+	if conf.GetCertificate != nil {
+		gc := conf.GetCertificate
+		conf.GetCertificate = func(info *tls.ClientHelloInfo) (*tls.Certificate, error) {
+			info.Conn = &conn{localAddr: localAddr, remoteAddr: remoteAddr}
+			return gc(info)
+		}
+	}
 }
 
 func newCryptoSetup(
@@ -136,7 +169,7 @@ func newCryptoSetup(
 	tracer *logging.ConnectionTracer,
 	logger utils.Logger,
 	perspective protocol.Perspective,
-	version protocol.Version,
+	version protocol.VersionNumber,
 ) *cryptoSetup {
 	initialSealer, initialOpener := NewInitialAEAD(connID, perspective, version)
 	if tracer != nil && tracer.UpdatedKeyFromTLS != nil {
@@ -171,8 +204,8 @@ func (h *cryptoSetup) SetLargest1RTTAcked(pn protocol.PacketNumber) error {
 	return h.aead.SetLargestAcked(pn)
 }
 
-func (h *cryptoSetup) StartHandshake(ctx context.Context) error {
-	err := h.conn.Start(context.WithValue(ctx, QUICVersionContextKey, h.version))
+func (h *cryptoSetup) StartHandshake() error {
+	err := h.conn.Start(context.WithValue(context.Background(), QUICVersionContextKey, h.version))
 	if err != nil {
 		return wrapError(err)
 	}
@@ -229,17 +262,14 @@ func (h *cryptoSetup) handleMessage(data []byte, encLevel protocol.EncryptionLev
 }
 
 func (h *cryptoSetup) handleEvent(ev tls.QUICEvent) (done bool, err error) {
-	//nolint:exhaustive
-	// Go 1.23 added new 0-RTT events, see https://github.com/quic-go/quic-go/issues/4272.
-	// We will start using these events when dropping support for Go 1.22.
 	switch ev.Kind {
 	case tls.QUICNoEvent:
 		return true, nil
 	case tls.QUICSetReadSecret:
-		h.setReadKey(ev.Level, ev.Suite, ev.Data)
+		h.SetReadKey(ev.Level, ev.Suite, ev.Data)
 		return false, nil
 	case tls.QUICSetWriteSecret:
-		h.setWriteKey(ev.Level, ev.Suite, ev.Data)
+		h.SetWriteKey(ev.Level, ev.Suite, ev.Data)
 		return false, nil
 	case tls.QUICTransportParameters:
 		return false, h.handleTransportParameters(ev.Data)
@@ -256,10 +286,7 @@ func (h *cryptoSetup) handleEvent(ev tls.QUICEvent) (done bool, err error) {
 		h.handshakeComplete()
 		return false, nil
 	default:
-		// Unknown events should be ignored.
-		// crypto/tls will ensure that this is safe to do.
-		// See the discussion following https://github.com/golang/go/issues/68124#issuecomment-2187042510 for details.
-		return false, nil
+		return false, fmt.Errorf("unexpected event: %d", ev.Kind)
 	}
 }
 
@@ -311,26 +338,25 @@ func (h *cryptoSetup) handleDataFromSessionState(data []byte, earlyData bool) (a
 	return false
 }
 
-func decodeDataFromSessionState(b []byte, earlyData bool) (time.Duration, *wire.TransportParameters, error) {
-	ver, l, err := quicvarint.Parse(b)
+func decodeDataFromSessionState(data []byte, earlyData bool) (time.Duration, *wire.TransportParameters, error) {
+	r := bytes.NewReader(data)
+	ver, err := quicvarint.Read(r)
 	if err != nil {
 		return 0, nil, err
 	}
-	b = b[l:]
 	if ver != clientSessionStateRevision {
 		return 0, nil, fmt.Errorf("mismatching version. Got %d, expected %d", ver, clientSessionStateRevision)
 	}
-	rttEncoded, l, err := quicvarint.Parse(b)
+	rttEncoded, err := quicvarint.Read(r)
 	if err != nil {
 		return 0, nil, err
 	}
-	b = b[l:]
 	rtt := time.Duration(rttEncoded) * time.Microsecond
 	if !earlyData {
 		return rtt, nil, nil
 	}
 	var tp wire.TransportParameters
-	if err := tp.UnmarshalFromSessionTicket(b); err != nil {
+	if err := tp.UnmarshalFromSessionTicket(r); err != nil {
 		return 0, nil, err
 	}
 	return rtt, &tp, nil
@@ -350,7 +376,9 @@ func (h *cryptoSetup) getDataForSessionTicket() []byte {
 // Due to limitations in crypto/tls, it's only possible to generate a single session ticket per connection.
 // It is only valid for the server.
 func (h *cryptoSetup) GetSessionTicket() ([]byte, error) {
-	if err := h.conn.SendSessionTicket(tls.QUICSessionTicketOptions{EarlyData: h.allow0RTT}); err != nil {
+	if err := h.conn.SendSessionTicket(tls.QUICSessionTicketOptions{
+		EarlyData: h.allow0RTT,
+	}); err != nil {
 		// Session tickets might be disabled by tls.Config.SessionTicketsDisabled.
 		// We can't check h.tlsConfig here, since the actual config might have been obtained from
 		// the GetConfigForClient callback.
@@ -411,7 +439,7 @@ func (h *cryptoSetup) rejected0RTT() {
 	}
 }
 
-func (h *cryptoSetup) setReadKey(el tls.QUICEncryptionLevel, suiteID uint16, trafficSecret []byte) {
+func (h *cryptoSetup) SetReadKey(el tls.QUICEncryptionLevel, suiteID uint16, trafficSecret []byte) {
 	suite := getCipherSuite(suiteID)
 	//nolint:exhaustive // The TLS stack doesn't export Initial keys.
 	switch el {
@@ -450,7 +478,7 @@ func (h *cryptoSetup) setReadKey(el tls.QUICEncryptionLevel, suiteID uint16, tra
 	}
 }
 
-func (h *cryptoSetup) setWriteKey(el tls.QUICEncryptionLevel, suiteID uint16, trafficSecret []byte) {
+func (h *cryptoSetup) SetWriteKey(el tls.QUICEncryptionLevel, suiteID uint16, trafficSecret []byte) {
 	suite := getCipherSuite(suiteID)
 	//nolint:exhaustive // The TLS stack doesn't export Initial keys.
 	switch el {
@@ -627,7 +655,8 @@ func (h *cryptoSetup) ConnectionState() ConnectionState {
 }
 
 func wrapError(err error) error {
-	if alertErr := tls.AlertError(0); errors.As(err, &alertErr) {
+	// alert 80 is an internal error
+	if alertErr := tls.AlertError(0); errors.As(err, &alertErr) && alertErr != 80 {
 		return qerr.NewLocalCryptoError(uint8(alertErr), err)
 	}
 	return &qerr.TransportError{ErrorCode: qerr.InternalError, ErrorMessage: err.Error()}

@@ -20,7 +20,7 @@ import (
 
 var _ = Describe("Updatable AEAD", func() {
 	DescribeTable("ChaCha test vector",
-		func(v protocol.Version, expectedPayload, expectedPacket []byte) {
+		func(v protocol.VersionNumber, expectedPayload, expectedPacket []byte) {
 			secret := splitHexString("9ac312a7f877468ebe69422748ad00a1 5443f18203a07d6060f688f30f21632b")
 			aead := newUpdatableAEAD(&utils.RTTStats{}, nil, nil, v)
 			chacha := cipherSuites[2]
@@ -48,7 +48,7 @@ var _ = Describe("Updatable AEAD", func() {
 		),
 	)
 
-	for _, ver := range []protocol.Version{protocol.Version1, protocol.Version2} {
+	for _, ver := range []protocol.VersionNumber{protocol.Version1, protocol.Version2} {
 		v := ver
 
 		Context(fmt.Sprintf("using version %s", v), func() {
@@ -59,20 +59,20 @@ var _ = Describe("Updatable AEAD", func() {
 					var (
 						client, server *updatableAEAD
 						serverTracer   *mocklogging.MockConnectionTracer
-						rttStats       utils.RTTStats
+						rttStats       *utils.RTTStats
 					)
 
 					BeforeEach(func() {
 						var tr *logging.ConnectionTracer
-						rttStats = utils.RTTStats{}
 						tr, serverTracer = mocklogging.NewMockConnectionTracer(mockCtrl)
 						trafficSecret1 := make([]byte, 16)
 						trafficSecret2 := make([]byte, 16)
 						rand.Read(trafficSecret1)
 						rand.Read(trafficSecret2)
 
-						client = newUpdatableAEAD(&rttStats, nil, utils.DefaultLogger, v)
-						server = newUpdatableAEAD(&rttStats, tr, utils.DefaultLogger, v)
+						rttStats = utils.NewRTTStats()
+						client = newUpdatableAEAD(rttStats, nil, utils.DefaultLogger, v)
+						server = newUpdatableAEAD(rttStats, tr, utils.DefaultLogger, v)
 						client.SetReadKey(cs, trafficSecret2)
 						client.SetWriteKey(cs, trafficSecret1)
 						server.SetReadKey(cs, trafficSecret1)
@@ -544,9 +544,9 @@ func getClientAndServer() (client, server *updatableAEAD) {
 	rand.Read(trafficSecret2)
 
 	cs := cipherSuites[0]
-	var rttStats utils.RTTStats
-	client = newUpdatableAEAD(&rttStats, nil, utils.DefaultLogger, protocol.Version1)
-	server = newUpdatableAEAD(&rttStats, nil, utils.DefaultLogger, protocol.Version1)
+	rttStats := utils.NewRTTStats()
+	client = newUpdatableAEAD(rttStats, nil, utils.DefaultLogger, protocol.Version1)
+	server = newUpdatableAEAD(rttStats, nil, utils.DefaultLogger, protocol.Version1)
 	client.SetReadKey(cs, trafficSecret2)
 	client.SetWriteKey(cs, trafficSecret1)
 	server.SetReadKey(cs, trafficSecret1)

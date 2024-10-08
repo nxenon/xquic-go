@@ -21,10 +21,10 @@ import (
 	mocklogging "github.com/quic-go/quic-go/internal/mocks/logging"
 	"github.com/quic-go/quic-go/internal/protocol"
 	"github.com/quic-go/quic-go/internal/qerr"
+	"github.com/quic-go/quic-go/internal/testutils"
 	"github.com/quic-go/quic-go/internal/utils"
 	"github.com/quic-go/quic-go/internal/wire"
 	"github.com/quic-go/quic-go/logging"
-	"github.com/quic-go/quic-go/testutils"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -54,21 +54,14 @@ var _ = Describe("Connection", func() {
 	destConnID := protocol.ParseConnectionID([]byte{8, 7, 6, 5, 4, 3, 2, 1})
 	clientDestConnID := protocol.ParseConnectionID([]byte{1, 2, 3, 4, 5, 6, 7, 8, 9, 10})
 
-	getCoalescedPacket := func(pn protocol.PacketNumber, encLevel protocol.EncryptionLevel) *coalescedPacket {
+	getCoalescedPacket := func(pn protocol.PacketNumber, isLongHeader bool) *coalescedPacket {
 		buffer := getPacketBuffer()
 		buffer.Data = append(buffer.Data, []byte("foobar")...)
 		packet := &coalescedPacket{buffer: buffer}
-		if encLevel != protocol.Encryption1RTT {
-			var typ protocol.PacketType
-			switch encLevel {
-			case protocol.EncryptionInitial:
-				typ = protocol.PacketTypeInitial
-			case protocol.EncryptionHandshake:
-				typ = protocol.PacketTypeHandshake
-			}
+		if isLongHeader {
 			packet.longHdrPackets = []*longHeaderPacket{{
 				header: &wire.ExtendedHeader{
-					Header:       wire.Header{Type: typ},
+					Header:       wire.Header{},
 					PacketNumber: pn,
 				},
 				length: 6, // foobar
@@ -83,7 +76,7 @@ var _ = Describe("Connection", func() {
 	}
 
 	expectReplaceWithClosed := func() {
-		connRunner.EXPECT().ReplaceWithClosed(gomock.Any(), gomock.Any()).Do(func(connIDs []protocol.ConnectionID, _ []byte) {
+		connRunner.EXPECT().ReplaceWithClosed(gomock.Any(), gomock.Any(), gomock.Any()).Do(func(connIDs []protocol.ConnectionID, _ protocol.Perspective, _ []byte) {
 			Expect(connIDs).To(ContainElement(srcConnID))
 			if len(connIDs) > 1 {
 				Expect(connIDs).To(ContainElement(clientDestConnID))
@@ -91,8 +84,8 @@ var _ = Describe("Connection", func() {
 		})
 	}
 
-	expectAppendPacket := func(packer *MockPacker, p shortHeaderPacket, b []byte) *MockPackerAppendPacketCall {
-		return packer.EXPECT().AppendPacket(gomock.Any(), gomock.Any(), Version1).DoAndReturn(func(buf *packetBuffer, _ protocol.ByteCount, _ protocol.Version) (shortHeaderPacket, error) {
+	expectAppendPacket := func(packer *MockPacker, p shortHeaderPacket, b []byte) *PackerAppendPacketCall {
+		return packer.EXPECT().AppendPacket(gomock.Any(), gomock.Any(), Version1).DoAndReturn(func(buf *packetBuffer, _ protocol.ByteCount, _ protocol.VersionNumber) (shortHeaderPacket, error) {
 			buf.Data = append(buf.Data, b...)
 			return p, nil
 		})
@@ -115,10 +108,7 @@ var _ = Describe("Connection", func() {
 		tracer.EXPECT().SentTransportParameters(gomock.Any())
 		tracer.EXPECT().UpdatedKeyFromTLS(gomock.Any(), gomock.Any()).AnyTimes()
 		tracer.EXPECT().UpdatedCongestionState(gomock.Any())
-		ctx, cancel := context.WithCancelCause(context.Background())
 		conn = newConnection(
-			ctx,
-			cancel,
 			mconn,
 			connRunner,
 			protocol.ConnectionID{},
@@ -128,11 +118,12 @@ var _ = Describe("Connection", func() {
 			srcConnID,
 			&protocol.DefaultConnectionIDGenerator{},
 			protocol.StatelessResetToken{},
-			populateConfig(&Config{DisablePathMTUDiscovery: true}),
+			populateServerConfig(&Config{DisablePathMTUDiscovery: true}),
 			&tls.Config{},
 			tokenGenerator,
 			false,
 			tr,
+			1234,
 			utils.DefaultLogger,
 			protocol.Version1,
 		).(*connection)
@@ -355,7 +346,7 @@ var _ = Describe("Connection", func() {
 				ErrorMessage: "foobar",
 			}
 			streamManager.EXPECT().CloseWithError(expectedErr)
-			connRunner.EXPECT().ReplaceWithClosed(gomock.Any(), gomock.Any()).Do(func(connIDs []protocol.ConnectionID, _ []byte) {
+			connRunner.EXPECT().ReplaceWithClosed(gomock.Any(), gomock.Any(), gomock.Any()).Do(func(connIDs []protocol.ConnectionID, _ protocol.Perspective, _ []byte) {
 				Expect(connIDs).To(ConsistOf(clientDestConnID, srcConnID))
 			})
 			cryptoSetup.EXPECT().Close()
@@ -366,7 +357,7 @@ var _ = Describe("Connection", func() {
 
 			go func() {
 				defer GinkgoRecover()
-				cryptoSetup.EXPECT().StartHandshake(gomock.Any()).MaxTimes(1)
+				cryptoSetup.EXPECT().StartHandshake().MaxTimes(1)
 				cryptoSetup.EXPECT().NextEvent().Return(handshake.Event{Kind: handshake.EventNoEvent})
 				Expect(conn.run()).To(MatchError(expectedErr))
 			}()
@@ -384,7 +375,7 @@ var _ = Describe("Connection", func() {
 				ErrorMessage: "foobar",
 			}
 			streamManager.EXPECT().CloseWithError(testErr)
-			connRunner.EXPECT().ReplaceWithClosed(gomock.Any(), gomock.Any()).Do(func(connIDs []protocol.ConnectionID, _ []byte) {
+			connRunner.EXPECT().ReplaceWithClosed(gomock.Any(), gomock.Any(), gomock.Any()).Do(func(connIDs []protocol.ConnectionID, _ protocol.Perspective, _ []byte) {
 				Expect(connIDs).To(ConsistOf(clientDestConnID, srcConnID))
 			})
 			cryptoSetup.EXPECT().Close()
@@ -395,7 +386,7 @@ var _ = Describe("Connection", func() {
 
 			go func() {
 				defer GinkgoRecover()
-				cryptoSetup.EXPECT().StartHandshake(gomock.Any()).MaxTimes(1)
+				cryptoSetup.EXPECT().StartHandshake().MaxTimes(1)
 				cryptoSetup.EXPECT().NextEvent().Return(handshake.Event{Kind: handshake.EventNoEvent})
 				Expect(conn.run()).To(MatchError(testErr))
 			}()
@@ -419,7 +410,7 @@ var _ = Describe("Connection", func() {
 
 	It("tells its versions", func() {
 		conn.version = 4242
-		Expect(conn.GetVersion()).To(Equal(protocol.Version(4242)))
+		Expect(conn.GetVersion()).To(Equal(protocol.VersionNumber(4242)))
 	})
 
 	Context("closing", func() {
@@ -444,7 +435,7 @@ var _ = Describe("Connection", func() {
 		runConn := func() {
 			go func() {
 				defer GinkgoRecover()
-				cryptoSetup.EXPECT().StartHandshake(gomock.Any()).MaxTimes(1)
+				cryptoSetup.EXPECT().StartHandshake().MaxTimes(1)
 				cryptoSetup.EXPECT().NextEvent().Return(handshake.Event{Kind: handshake.EventNoEvent})
 				runErr <- conn.run()
 			}()
@@ -459,7 +450,7 @@ var _ = Describe("Connection", func() {
 			cryptoSetup.EXPECT().Close()
 			buffer := getPacketBuffer()
 			buffer.Data = append(buffer.Data, []byte("connection close")...)
-			packer.EXPECT().PackApplicationClose(gomock.Any(), gomock.Any(), conn.version).DoAndReturn(func(e *qerr.ApplicationError, _ protocol.ByteCount, _ protocol.Version) (*coalescedPacket, error) {
+			packer.EXPECT().PackApplicationClose(gomock.Any(), gomock.Any(), conn.version).DoAndReturn(func(e *qerr.ApplicationError, _ protocol.ByteCount, _ protocol.VersionNumber) (*coalescedPacket, error) {
 				Expect(e.ErrorCode).To(BeEquivalentTo(qerr.NoError))
 				Expect(e.ErrorMessage).To(BeEmpty())
 				return &coalescedPacket{buffer: buffer}, nil
@@ -474,7 +465,7 @@ var _ = Describe("Connection", func() {
 				}),
 				tracer.EXPECT().Close(),
 			)
-			conn.CloseWithError(0, "")
+			conn.shutdown()
 			Eventually(areConnsRunning).Should(BeFalse())
 			Expect(conn.Context().Done()).To(BeClosed())
 		})
@@ -488,8 +479,8 @@ var _ = Describe("Connection", func() {
 			mconn.EXPECT().Write(gomock.Any(), gomock.Any(), gomock.Any())
 			tracer.EXPECT().ClosedConnection(gomock.Any())
 			tracer.EXPECT().Close()
-			conn.CloseWithError(0, "")
-			conn.CloseWithError(0, "")
+			conn.shutdown()
+			conn.shutdown()
 			Eventually(areConnsRunning).Should(BeFalse())
 			Expect(conn.Context().Done()).To(BeClosed())
 		})
@@ -560,6 +551,29 @@ var _ = Describe("Connection", func() {
 			}
 		})
 
+		It("cancels the context when the run loop exists", func() {
+			runConn()
+			streamManager.EXPECT().CloseWithError(gomock.Any())
+			expectReplaceWithClosed()
+			cryptoSetup.EXPECT().Close()
+			packer.EXPECT().PackApplicationClose(gomock.Any(), gomock.Any(), conn.version).Return(&coalescedPacket{buffer: getPacketBuffer()}, nil)
+			returned := make(chan struct{})
+			go func() {
+				defer GinkgoRecover()
+				ctx := conn.Context()
+				<-ctx.Done()
+				Expect(ctx.Err()).To(MatchError(context.Canceled))
+				close(returned)
+			}()
+			Consistently(returned).ShouldNot(BeClosed())
+			mconn.EXPECT().Write(gomock.Any(), gomock.Any(), gomock.Any())
+			tracer.EXPECT().ClosedConnection(gomock.Any())
+			tracer.EXPECT().Close()
+			conn.shutdown()
+			Eventually(returned).Should(BeClosed())
+			Expect(context.Cause(conn.Context())).To(MatchError(context.Canceled))
+		})
+
 		It("doesn't send any more packets after receiving a CONNECTION_CLOSE", func() {
 			unpacker := NewMockUnpacker(mockCtrl)
 			conn.handshakeConfirmed = true
@@ -567,7 +581,7 @@ var _ = Describe("Connection", func() {
 			runConn()
 			cryptoSetup.EXPECT().Close()
 			streamManager.EXPECT().CloseWithError(gomock.Any())
-			connRunner.EXPECT().ReplaceWithClosed(gomock.Any(), gomock.Any()).AnyTimes()
+			connRunner.EXPECT().ReplaceWithClosed(gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
 			b, err := wire.AppendShortHeader(nil, srcConnID, 42, protocol.PacketNumberLen2, protocol.KeyPhaseOne)
 			Expect(err).ToNot(HaveOccurred())
 
@@ -716,7 +730,7 @@ var _ = Describe("Connection", func() {
 		})
 
 		It("drops packets with an unsupported version", func() {
-			origSupportedVersions := make([]protocol.Version, len(protocol.SupportedVersions))
+			origSupportedVersions := make([]protocol.VersionNumber, len(protocol.SupportedVersions))
 			copy(origSupportedVersions, protocol.SupportedVersions)
 			defer func() {
 				protocol.SupportedVersions = origSupportedVersions
@@ -752,7 +766,7 @@ var _ = Describe("Connection", func() {
 			packet := getLongHeaderPacket(hdr, nil)
 			packet.ecn = protocol.ECNCE
 			rcvTime := time.Now().Add(-10 * time.Second)
-			unpacker.EXPECT().UnpackLongHeader(gomock.Any(), gomock.Any()).Return(&unpackedPacket{
+			unpacker.EXPECT().UnpackLongHeader(gomock.Any(), rcvTime, gomock.Any(), conn.version).Return(&unpackedPacket{
 				encryptionLevel: protocol.EncryptionInitial,
 				hdr:             &unpackedHdr,
 				data:            []byte{0}, // one PADDING frame
@@ -784,7 +798,7 @@ var _ = Describe("Connection", func() {
 			conn.receivedPacketHandler = rph
 			packet.rcvTime = rcvTime
 			tracer.EXPECT().ReceivedShortHeaderPacket(
-				&logging.ShortHeader{DestConnectionID: srcConnID, PacketNumber: 0x1337, PacketNumberLen: 2, KeyPhase: protocol.KeyPhaseZero},
+				&logging.ShortHeader{PacketNumber: 0x1337, PacketNumberLen: 2, KeyPhase: protocol.KeyPhaseZero},
 				protocol.ByteCount(len(packet.data)),
 				logging.ECT1,
 				[]logging.Frame{&logging.PingFrame{}},
@@ -803,13 +817,13 @@ var _ = Describe("Connection", func() {
 		})
 
 		It("drops a packet when unpacking fails", func() {
-			unpacker.EXPECT().UnpackLongHeader(gomock.Any(), gomock.Any()).Return(nil, handshake.ErrDecryptionFailed)
+			unpacker.EXPECT().UnpackLongHeader(gomock.Any(), gomock.Any(), gomock.Any(), conn.version).Return(nil, handshake.ErrDecryptionFailed)
 			streamManager.EXPECT().CloseWithError(gomock.Any())
 			cryptoSetup.EXPECT().Close()
 			packer.EXPECT().PackConnectionClose(gomock.Any(), gomock.Any(), conn.version).Return(&coalescedPacket{buffer: getPacketBuffer()}, nil)
 			go func() {
 				defer GinkgoRecover()
-				cryptoSetup.EXPECT().StartHandshake(gomock.Any()).MaxTimes(1)
+				cryptoSetup.EXPECT().StartHandshake().MaxTimes(1)
 				cryptoSetup.EXPECT().NextEvent().Return(handshake.Event{Kind: handshake.EventNoEvent})
 				conn.run()
 			}()
@@ -851,7 +865,7 @@ var _ = Describe("Connection", func() {
 
 			go func() {
 				defer GinkgoRecover()
-				cryptoSetup.EXPECT().StartHandshake(gomock.Any()).MaxTimes(1)
+				cryptoSetup.EXPECT().StartHandshake().MaxTimes(1)
 				cryptoSetup.EXPECT().NextEvent().Return(handshake.Event{Kind: handshake.EventNoEvent})
 				conn.run()
 			}()
@@ -886,7 +900,7 @@ var _ = Describe("Connection", func() {
 
 			go func() {
 				defer GinkgoRecover()
-				cryptoSetup.EXPECT().StartHandshake(gomock.Any()).MaxTimes(1)
+				cryptoSetup.EXPECT().StartHandshake().MaxTimes(1)
 				cryptoSetup.EXPECT().NextEvent().Return(handshake.Event{Kind: handshake.EventNoEvent})
 				conn.run()
 			}()
@@ -912,7 +926,7 @@ var _ = Describe("Connection", func() {
 			done := make(chan struct{})
 			go func() {
 				defer GinkgoRecover()
-				cryptoSetup.EXPECT().StartHandshake(gomock.Any()).MaxTimes(1)
+				cryptoSetup.EXPECT().StartHandshake().MaxTimes(1)
 				cryptoSetup.EXPECT().NextEvent().Return(handshake.Event{Kind: handshake.EventNoEvent})
 				err := conn.run()
 				Expect(err).To(HaveOccurred())
@@ -937,7 +951,7 @@ var _ = Describe("Connection", func() {
 			runErr := make(chan error)
 			go func() {
 				defer GinkgoRecover()
-				cryptoSetup.EXPECT().StartHandshake(gomock.Any()).MaxTimes(1)
+				cryptoSetup.EXPECT().StartHandshake().MaxTimes(1)
 				cryptoSetup.EXPECT().NextEvent().Return(handshake.Event{Kind: handshake.EventNoEvent})
 				runErr <- conn.run()
 			}()
@@ -950,7 +964,7 @@ var _ = Describe("Connection", func() {
 			tracer.EXPECT().ClosedConnection(gomock.Any())
 			tracer.EXPECT().Close()
 			mconn.EXPECT().Write(gomock.Any(), gomock.Any(), gomock.Any())
-			conn.CloseWithError(0, "")
+			conn.shutdown()
 			Eventually(conn.Context().Done()).Should(BeClosed())
 		})
 
@@ -962,7 +976,7 @@ var _ = Describe("Connection", func() {
 			done := make(chan struct{})
 			go func() {
 				defer GinkgoRecover()
-				cryptoSetup.EXPECT().StartHandshake(gomock.Any()).MaxTimes(1)
+				cryptoSetup.EXPECT().StartHandshake().MaxTimes(1)
 				cryptoSetup.EXPECT().NextEvent().Return(handshake.Event{Kind: handshake.EventNoEvent})
 				err := conn.run()
 				Expect(err).To(HaveOccurred())
@@ -1004,7 +1018,7 @@ var _ = Describe("Connection", func() {
 			Expect(srcConnID).ToNot(Equal(hdr2.SrcConnectionID))
 			// Send one packet, which might change the connection ID.
 			// only EXPECT one call to the unpacker
-			unpacker.EXPECT().UnpackLongHeader(gomock.Any(), gomock.Any()).Return(&unpackedPacket{
+			unpacker.EXPECT().UnpackLongHeader(gomock.Any(), gomock.Any(), gomock.Any(), conn.version).Return(&unpackedPacket{
 				encryptionLevel: protocol.Encryption1RTT,
 				hdr:             hdr1,
 				data:            []byte{0}, // one PADDING frame
@@ -1032,7 +1046,7 @@ var _ = Describe("Connection", func() {
 				PacketNumberLen: protocol.PacketNumberLen1,
 				PacketNumber:    1,
 			}
-			unpacker.EXPECT().UnpackLongHeader(gomock.Any(), gomock.Any()).Return(nil, handshake.ErrKeysNotYetAvailable)
+			unpacker.EXPECT().UnpackLongHeader(gomock.Any(), gomock.Any(), gomock.Any(), conn.version).Return(nil, handshake.ErrKeysNotYetAvailable)
 			packet := getLongHeaderPacket(hdr, nil)
 			tracer.EXPECT().BufferedPacket(logging.PacketTypeHandshake, packet.Size())
 			Expect(conn.handlePacketImpl(packet)).To(BeFalse())
@@ -1074,7 +1088,7 @@ var _ = Describe("Connection", func() {
 
 			It("cuts packets to the right length", func() {
 				hdrLen, packet := getPacketWithLength(srcConnID, 456)
-				unpacker.EXPECT().UnpackLongHeader(gomock.Any(), gomock.Any()).DoAndReturn(func(_ *wire.Header, data []byte) (*unpackedPacket, error) {
+				unpacker.EXPECT().UnpackLongHeader(gomock.Any(), gomock.Any(), gomock.Any(), conn.version).DoAndReturn(func(_ *wire.Header, _ time.Time, data []byte, _ protocol.VersionNumber) (*unpackedPacket, error) {
 					Expect(data).To(HaveLen(hdrLen + 456 - 3))
 					return &unpackedPacket{
 						encryptionLevel: protocol.EncryptionHandshake,
@@ -1091,7 +1105,7 @@ var _ = Describe("Connection", func() {
 			It("handles coalesced packets", func() {
 				hdrLen1, packet1 := getPacketWithLength(srcConnID, 456)
 				packet1.ecn = protocol.ECT1
-				unpacker.EXPECT().UnpackLongHeader(gomock.Any(), gomock.Any()).DoAndReturn(func(_ *wire.Header, data []byte) (*unpackedPacket, error) {
+				unpacker.EXPECT().UnpackLongHeader(gomock.Any(), gomock.Any(), gomock.Any(), conn.version).DoAndReturn(func(_ *wire.Header, _ time.Time, data []byte, _ protocol.VersionNumber) (*unpackedPacket, error) {
 					Expect(data).To(HaveLen(hdrLen1 + 456 - 3))
 					return &unpackedPacket{
 						encryptionLevel: protocol.EncryptionHandshake,
@@ -1103,7 +1117,7 @@ var _ = Describe("Connection", func() {
 					}, nil
 				})
 				hdrLen2, packet2 := getPacketWithLength(srcConnID, 123)
-				unpacker.EXPECT().UnpackLongHeader(gomock.Any(), gomock.Any()).DoAndReturn(func(_ *wire.Header, data []byte) (*unpackedPacket, error) {
+				unpacker.EXPECT().UnpackLongHeader(gomock.Any(), gomock.Any(), gomock.Any(), conn.version).DoAndReturn(func(_ *wire.Header, _ time.Time, data []byte, _ protocol.VersionNumber) (*unpackedPacket, error) {
 					Expect(data).To(HaveLen(hdrLen2 + 123 - 3))
 					return &unpackedPacket{
 						encryptionLevel: protocol.EncryptionHandshake,
@@ -1129,8 +1143,8 @@ var _ = Describe("Connection", func() {
 				hdrLen1, packet1 := getPacketWithLength(srcConnID, 456)
 				hdrLen2, packet2 := getPacketWithLength(srcConnID, 123)
 				gomock.InOrder(
-					unpacker.EXPECT().UnpackLongHeader(gomock.Any(), gomock.Any()).Return(nil, handshake.ErrKeysNotYetAvailable),
-					unpacker.EXPECT().UnpackLongHeader(gomock.Any(), gomock.Any()).DoAndReturn(func(_ *wire.Header, data []byte) (*unpackedPacket, error) {
+					unpacker.EXPECT().UnpackLongHeader(gomock.Any(), gomock.Any(), gomock.Any(), conn.version).Return(nil, handshake.ErrKeysNotYetAvailable),
+					unpacker.EXPECT().UnpackLongHeader(gomock.Any(), gomock.Any(), gomock.Any(), conn.version).DoAndReturn(func(_ *wire.Header, _ time.Time, data []byte, _ protocol.VersionNumber) (*unpackedPacket, error) {
 						Expect(data).To(HaveLen(hdrLen2 + 123 - 3))
 						return &unpackedPacket{
 							encryptionLevel: protocol.EncryptionHandshake,
@@ -1156,7 +1170,7 @@ var _ = Describe("Connection", func() {
 				wrongConnID := protocol.ParseConnectionID([]byte{0xde, 0xad, 0xbe, 0xef})
 				Expect(srcConnID).ToNot(Equal(wrongConnID))
 				hdrLen1, packet1 := getPacketWithLength(srcConnID, 456)
-				unpacker.EXPECT().UnpackLongHeader(gomock.Any(), gomock.Any()).DoAndReturn(func(_ *wire.Header, data []byte) (*unpackedPacket, error) {
+				unpacker.EXPECT().UnpackLongHeader(gomock.Any(), gomock.Any(), gomock.Any(), conn.version).DoAndReturn(func(_ *wire.Header, _ time.Time, data []byte, _ protocol.VersionNumber) (*unpackedPacket, error) {
 					Expect(data).To(HaveLen(hdrLen1 + 456 - 3))
 					return &unpackedPacket{
 						encryptionLevel: protocol.EncryptionHandshake,
@@ -1205,7 +1219,7 @@ var _ = Describe("Connection", func() {
 			tracer.EXPECT().ClosedConnection(gomock.Any())
 			tracer.EXPECT().Close()
 			sender.EXPECT().Close()
-			conn.CloseWithError(0, "")
+			conn.shutdown()
 			Eventually(conn.Context().Done()).Should(BeClosed())
 			Eventually(connDone).Should(BeClosed())
 		})
@@ -1213,7 +1227,7 @@ var _ = Describe("Connection", func() {
 		runConn := func() {
 			go func() {
 				defer GinkgoRecover()
-				cryptoSetup.EXPECT().StartHandshake(gomock.Any()).MaxTimes(1)
+				cryptoSetup.EXPECT().StartHandshake().MaxTimes(1)
 				cryptoSetup.EXPECT().NextEvent().Return(handshake.Event{Kind: handshake.EventNoEvent})
 				conn.run()
 				close(connDone)
@@ -1266,7 +1280,7 @@ var _ = Describe("Connection", func() {
 			sph.EXPECT().SendMode(gomock.Any()).Return(ackhandler.SendAck)
 			sph.EXPECT().ECNMode(gomock.Any()).Return(protocol.ECT1).AnyTimes()
 			done := make(chan struct{})
-			packer.EXPECT().PackCoalescedPacket(true, gomock.Any(), conn.version).Do(func(bool, protocol.ByteCount, protocol.Version) (*coalescedPacket, error) {
+			packer.EXPECT().PackCoalescedPacket(true, gomock.Any(), conn.version).Do(func(bool, protocol.ByteCount, protocol.VersionNumber) (*coalescedPacket, error) {
 				close(done)
 				return nil, nil
 			})
@@ -1284,7 +1298,6 @@ var _ = Describe("Connection", func() {
 			sph.EXPECT().SentPacket(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any())
 			fc := mocks.NewMockConnectionFlowController(mockCtrl)
 			fc.EXPECT().IsNewlyBlocked().Return(true, protocol.ByteCount(1337))
-			fc.EXPECT().GetWindowUpdate()
 			expectAppendPacket(packer, shortHeaderPacket{PacketNumber: 13}, []byte("foobar"))
 			packer.EXPECT().AppendPacket(gomock.Any(), gomock.Any(), conn.version).Return(shortHeaderPacket{}, errNothingToPack).AnyTimes()
 			conn.connFlowController = fc
@@ -1312,9 +1325,10 @@ var _ = Describe("Connection", func() {
 
 			Context(fmt.Sprintf("sending %s probe packets", encLevel), func() {
 				var sendMode ackhandler.SendMode
-				var getFrame func(protocol.ByteCount, protocol.Version) wire.Frame
+				var getFrame func(protocol.ByteCount, protocol.VersionNumber) wire.Frame
 
 				BeforeEach(func() {
+					//nolint:exhaustive
 					switch encLevel {
 					case protocol.EncryptionInitial:
 						sendMode = ackhandler.SendPTOInitial
@@ -1335,14 +1349,14 @@ var _ = Describe("Connection", func() {
 					sph.EXPECT().SendMode(gomock.Any()).Return(ackhandler.SendNone)
 					sph.EXPECT().QueueProbePacket(encLevel)
 					sph.EXPECT().ECNMode(gomock.Any())
-					p := getCoalescedPacket(123, encLevel)
+					p := getCoalescedPacket(123, enc != protocol.Encryption1RTT)
 					packer.EXPECT().MaybePackProbePacket(encLevel, gomock.Any(), conn.version).Return(p, nil)
 					sph.EXPECT().SentPacket(gomock.Any(), protocol.PacketNumber(123), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any())
 					conn.sentPacketHandler = sph
 					runConn()
 					sent := make(chan struct{})
 					sender.EXPECT().Send(gomock.Any(), gomock.Any(), gomock.Any()).Do(func(*packetBuffer, uint16, protocol.ECN) { close(sent) })
-					if encLevel == protocol.Encryption1RTT {
+					if enc == protocol.Encryption1RTT {
 						tracer.EXPECT().SentShortHeaderPacket(gomock.Any(), p.shortHdrPacket.Length, gomock.Any(), gomock.Any(), gomock.Any())
 					} else {
 						tracer.EXPECT().SentLongHeaderPacket(gomock.Any(), p.longHdrPackets[0].length, gomock.Any(), gomock.Any(), gomock.Any())
@@ -1358,13 +1372,13 @@ var _ = Describe("Connection", func() {
 					sph.EXPECT().SendMode(gomock.Any()).Return(ackhandler.SendNone)
 					sph.EXPECT().ECNMode(gomock.Any()).Return(protocol.ECT0)
 					sph.EXPECT().QueueProbePacket(encLevel).Return(false)
-					p := getCoalescedPacket(123, encLevel)
+					p := getCoalescedPacket(123, enc != protocol.Encryption1RTT)
 					packer.EXPECT().MaybePackProbePacket(encLevel, gomock.Any(), conn.version).Return(p, nil)
 					sph.EXPECT().SentPacket(gomock.Any(), protocol.PacketNumber(123), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any())
 					runConn()
 					sent := make(chan struct{})
 					sender.EXPECT().Send(gomock.Any(), gomock.Any(), gomock.Any()).Do(func(*packetBuffer, uint16, protocol.ECN) { close(sent) })
-					if encLevel == protocol.Encryption1RTT {
+					if enc == protocol.Encryption1RTT {
 						tracer.EXPECT().SentShortHeaderPacket(gomock.Any(), p.shortHdrPacket.Length, logging.ECT0, gomock.Any(), gomock.Any())
 					} else {
 						tracer.EXPECT().SentLongHeaderPacket(gomock.Any(), p.longHdrPackets[0].length, logging.ECT0, gomock.Any(), gomock.Any())
@@ -1408,7 +1422,7 @@ var _ = Describe("Connection", func() {
 			tracer.EXPECT().ClosedConnection(gomock.Any())
 			tracer.EXPECT().Close()
 			sender.EXPECT().Close()
-			conn.CloseWithError(0, "")
+			conn.shutdown()
 			Eventually(conn.Context().Done()).Should(BeClosed())
 		})
 
@@ -1429,7 +1443,7 @@ var _ = Describe("Connection", func() {
 			})
 			go func() {
 				defer GinkgoRecover()
-				cryptoSetup.EXPECT().StartHandshake(gomock.Any()).MaxTimes(1)
+				cryptoSetup.EXPECT().StartHandshake().MaxTimes(1)
 				cryptoSetup.EXPECT().NextEvent().Return(handshake.Event{Kind: handshake.EventNoEvent})
 				conn.run()
 			}()
@@ -1442,20 +1456,20 @@ var _ = Describe("Connection", func() {
 			sph.EXPECT().SentPacket(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Times(2)
 			sph.EXPECT().ECNMode(true).Return(protocol.ECT1).Times(4)
 			sph.EXPECT().SendMode(gomock.Any()).Return(ackhandler.SendAny).Times(3)
-			payload1 := make([]byte, conn.maxPacketSize())
+			payload1 := make([]byte, conn.mtuDiscoverer.CurrentSize())
 			rand.Read(payload1)
-			payload2 := make([]byte, conn.maxPacketSize())
+			payload2 := make([]byte, conn.mtuDiscoverer.CurrentSize())
 			rand.Read(payload2)
 			expectAppendPacket(packer, shortHeaderPacket{PacketNumber: 10}, payload1)
 			expectAppendPacket(packer, shortHeaderPacket{PacketNumber: 11}, payload2)
 			packer.EXPECT().AppendPacket(gomock.Any(), gomock.Any(), gomock.Any()).Return(shortHeaderPacket{}, errNothingToPack)
 			sender.EXPECT().WouldBlock().AnyTimes()
-			sender.EXPECT().Send(gomock.Any(), uint16(conn.maxPacketSize()), gomock.Any()).Do(func(b *packetBuffer, _ uint16, _ protocol.ECN) {
+			sender.EXPECT().Send(gomock.Any(), uint16(conn.mtuDiscoverer.CurrentSize()), gomock.Any()).Do(func(b *packetBuffer, _ uint16, _ protocol.ECN) {
 				Expect(b.Data).To(Equal(append(payload1, payload2...)))
 			})
 			go func() {
 				defer GinkgoRecover()
-				cryptoSetup.EXPECT().StartHandshake(gomock.Any()).MaxTimes(1)
+				cryptoSetup.EXPECT().StartHandshake().MaxTimes(1)
 				cryptoSetup.EXPECT().NextEvent().Return(handshake.Event{Kind: handshake.EventNoEvent})
 				conn.run()
 			}()
@@ -1469,25 +1483,25 @@ var _ = Describe("Connection", func() {
 			sph.EXPECT().SendMode(gomock.Any()).Return(ackhandler.SendAny).Times(3)
 			sph.EXPECT().SendMode(gomock.Any()).Return(ackhandler.SendNone)
 			sph.EXPECT().ECNMode(true).Times(4)
-			payload1 := make([]byte, conn.maxPacketSize())
+			payload1 := make([]byte, conn.mtuDiscoverer.CurrentSize())
 			rand.Read(payload1)
-			payload2 := make([]byte, conn.maxPacketSize()-1)
+			payload2 := make([]byte, conn.mtuDiscoverer.CurrentSize()-1)
 			rand.Read(payload2)
-			payload3 := make([]byte, conn.maxPacketSize())
+			payload3 := make([]byte, conn.mtuDiscoverer.CurrentSize())
 			rand.Read(payload3)
 			expectAppendPacket(packer, shortHeaderPacket{PacketNumber: 10}, payload1)
 			expectAppendPacket(packer, shortHeaderPacket{PacketNumber: 11}, payload2)
 			expectAppendPacket(packer, shortHeaderPacket{PacketNumber: 12}, payload3)
 			sender.EXPECT().WouldBlock().AnyTimes()
-			sender.EXPECT().Send(gomock.Any(), uint16(conn.maxPacketSize()), gomock.Any()).Do(func(b *packetBuffer, _ uint16, _ protocol.ECN) {
+			sender.EXPECT().Send(gomock.Any(), uint16(conn.mtuDiscoverer.CurrentSize()), gomock.Any()).Do(func(b *packetBuffer, _ uint16, _ protocol.ECN) {
 				Expect(b.Data).To(Equal(append(payload1, payload2...)))
 			})
-			sender.EXPECT().Send(gomock.Any(), uint16(conn.maxPacketSize()), gomock.Any()).Do(func(b *packetBuffer, _ uint16, _ protocol.ECN) {
+			sender.EXPECT().Send(gomock.Any(), uint16(conn.mtuDiscoverer.CurrentSize()), gomock.Any()).Do(func(b *packetBuffer, _ uint16, _ protocol.ECN) {
 				Expect(b.Data).To(Equal(payload3))
 			})
 			go func() {
 				defer GinkgoRecover()
-				cryptoSetup.EXPECT().StartHandshake(gomock.Any()).MaxTimes(1)
+				cryptoSetup.EXPECT().StartHandshake().MaxTimes(1)
 				cryptoSetup.EXPECT().NextEvent().Return(handshake.Event{Kind: handshake.EventNoEvent})
 				conn.run()
 			}()
@@ -1502,25 +1516,25 @@ var _ = Describe("Connection", func() {
 			sph.EXPECT().SendMode(gomock.Any()).Return(ackhandler.SendNone)
 			sph.EXPECT().ECNMode(true).Return(protocol.ECT1).Times(2)
 			sph.EXPECT().ECNMode(true).Return(protocol.ECT0).Times(2)
-			payload1 := make([]byte, conn.maxPacketSize())
+			payload1 := make([]byte, conn.mtuDiscoverer.CurrentSize())
 			rand.Read(payload1)
-			payload2 := make([]byte, conn.maxPacketSize())
+			payload2 := make([]byte, conn.mtuDiscoverer.CurrentSize())
 			rand.Read(payload2)
-			payload3 := make([]byte, conn.maxPacketSize())
+			payload3 := make([]byte, conn.mtuDiscoverer.CurrentSize())
 			rand.Read(payload3)
 			expectAppendPacket(packer, shortHeaderPacket{PacketNumber: 10}, payload1)
 			expectAppendPacket(packer, shortHeaderPacket{PacketNumber: 11}, payload2)
 			expectAppendPacket(packer, shortHeaderPacket{PacketNumber: 11}, payload3)
 			sender.EXPECT().WouldBlock().AnyTimes()
-			sender.EXPECT().Send(gomock.Any(), uint16(conn.maxPacketSize()), gomock.Any()).Do(func(b *packetBuffer, _ uint16, _ protocol.ECN) {
+			sender.EXPECT().Send(gomock.Any(), uint16(conn.mtuDiscoverer.CurrentSize()), gomock.Any()).Do(func(b *packetBuffer, _ uint16, _ protocol.ECN) {
 				Expect(b.Data).To(Equal(append(payload1, payload2...)))
 			})
-			sender.EXPECT().Send(gomock.Any(), uint16(conn.maxPacketSize()), gomock.Any()).Do(func(b *packetBuffer, _ uint16, _ protocol.ECN) {
+			sender.EXPECT().Send(gomock.Any(), uint16(conn.mtuDiscoverer.CurrentSize()), gomock.Any()).Do(func(b *packetBuffer, _ uint16, _ protocol.ECN) {
 				Expect(b.Data).To(Equal(payload3))
 			})
 			go func() {
 				defer GinkgoRecover()
-				cryptoSetup.EXPECT().StartHandshake(gomock.Any()).MaxTimes(1)
+				cryptoSetup.EXPECT().StartHandshake().MaxTimes(1)
 				cryptoSetup.EXPECT().NextEvent().Return(handshake.Event{Kind: handshake.EventNoEvent})
 				conn.run()
 			}()
@@ -1538,7 +1552,7 @@ var _ = Describe("Connection", func() {
 			sender.EXPECT().Send(gomock.Any(), gomock.Any(), gomock.Any())
 			go func() {
 				defer GinkgoRecover()
-				cryptoSetup.EXPECT().StartHandshake(gomock.Any()).MaxTimes(1)
+				cryptoSetup.EXPECT().StartHandshake().MaxTimes(1)
 				cryptoSetup.EXPECT().NextEvent().Return(handshake.Event{Kind: handshake.EventNoEvent})
 				conn.run()
 			}()
@@ -1557,7 +1571,7 @@ var _ = Describe("Connection", func() {
 			sender.EXPECT().Send(gomock.Any(), gomock.Any(), gomock.Any())
 			go func() {
 				defer GinkgoRecover()
-				cryptoSetup.EXPECT().StartHandshake(gomock.Any()).MaxTimes(1)
+				cryptoSetup.EXPECT().StartHandshake().MaxTimes(1)
 				cryptoSetup.EXPECT().NextEvent().Return(handshake.Event{Kind: handshake.EventNoEvent})
 				conn.run()
 			}()
@@ -1577,7 +1591,7 @@ var _ = Describe("Connection", func() {
 			sender.EXPECT().Send(gomock.Any(), gomock.Any(), gomock.Any())
 			go func() {
 				defer GinkgoRecover()
-				cryptoSetup.EXPECT().StartHandshake(gomock.Any()).MaxTimes(1)
+				cryptoSetup.EXPECT().StartHandshake().MaxTimes(1)
 				cryptoSetup.EXPECT().NextEvent().Return(handshake.Event{Kind: handshake.EventNoEvent})
 				conn.run()
 			}()
@@ -1606,7 +1620,7 @@ var _ = Describe("Connection", func() {
 			sender.EXPECT().Send(gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(func(*packetBuffer, uint16, protocol.ECN) { written <- struct{}{} }).Times(2)
 			go func() {
 				defer GinkgoRecover()
-				cryptoSetup.EXPECT().StartHandshake(gomock.Any()).MaxTimes(1)
+				cryptoSetup.EXPECT().StartHandshake().MaxTimes(1)
 				cryptoSetup.EXPECT().NextEvent().Return(handshake.Event{Kind: handshake.EventNoEvent})
 				conn.run()
 			}()
@@ -1630,7 +1644,7 @@ var _ = Describe("Connection", func() {
 			sender.EXPECT().Send(gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(func(*packetBuffer, uint16, protocol.ECN) { written <- struct{}{} }).Times(3)
 			go func() {
 				defer GinkgoRecover()
-				cryptoSetup.EXPECT().StartHandshake(gomock.Any()).MaxTimes(1)
+				cryptoSetup.EXPECT().StartHandshake().MaxTimes(1)
 				cryptoSetup.EXPECT().NextEvent().Return(handshake.Event{Kind: handshake.EventNoEvent})
 				conn.run()
 			}()
@@ -1649,7 +1663,7 @@ var _ = Describe("Connection", func() {
 				sender.EXPECT().Available().Return(available)
 				go func() {
 					defer GinkgoRecover()
-					cryptoSetup.EXPECT().StartHandshake(gomock.Any()).MaxTimes(1)
+					cryptoSetup.EXPECT().StartHandshake().MaxTimes(1)
 					cryptoSetup.EXPECT().NextEvent().Return(handshake.Event{Kind: handshake.EventNoEvent})
 					conn.run()
 				}()
@@ -1673,7 +1687,7 @@ var _ = Describe("Connection", func() {
 			sender.EXPECT().WouldBlock().AnyTimes()
 			go func() {
 				defer GinkgoRecover()
-				cryptoSetup.EXPECT().StartHandshake(gomock.Any()).MaxTimes(1)
+				cryptoSetup.EXPECT().StartHandshake().MaxTimes(1)
 				cryptoSetup.EXPECT().NextEvent().Return(handshake.Event{Kind: handshake.EventNoEvent})
 				conn.run()
 			}()
@@ -1707,7 +1721,7 @@ var _ = Describe("Connection", func() {
 			sender.EXPECT().Send(gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(func(*packetBuffer, uint16, protocol.ECN) { written <- struct{}{} })
 			go func() {
 				defer GinkgoRecover()
-				cryptoSetup.EXPECT().StartHandshake(gomock.Any()).MaxTimes(1)
+				cryptoSetup.EXPECT().StartHandshake().MaxTimes(1)
 				cryptoSetup.EXPECT().NextEvent().Return(handshake.Event{Kind: handshake.EventNoEvent})
 				conn.run()
 			}()
@@ -1741,7 +1755,7 @@ var _ = Describe("Connection", func() {
 			// don't EXPECT any calls to mconn.Write()
 			go func() {
 				defer GinkgoRecover()
-				cryptoSetup.EXPECT().StartHandshake(gomock.Any()).MaxTimes(1)
+				cryptoSetup.EXPECT().StartHandshake().MaxTimes(1)
 				cryptoSetup.EXPECT().NextEvent().Return(handshake.Event{Kind: handshake.EventNoEvent})
 				conn.run()
 			}()
@@ -1766,7 +1780,7 @@ var _ = Describe("Connection", func() {
 			packer.EXPECT().PackMTUProbePacket(ping, protocol.ByteCount(1234), conn.version).Return(shortHeaderPacket{PacketNumber: 1}, getPacketBuffer(), nil)
 			go func() {
 				defer GinkgoRecover()
-				cryptoSetup.EXPECT().StartHandshake(gomock.Any()).MaxTimes(1)
+				cryptoSetup.EXPECT().StartHandshake().MaxTimes(1)
 				cryptoSetup.EXPECT().NextEvent().Return(handshake.Event{Kind: handshake.EventNoEvent})
 				conn.run()
 			}()
@@ -1797,7 +1811,7 @@ var _ = Describe("Connection", func() {
 			sender.EXPECT().Close()
 			tracer.EXPECT().ClosedConnection(gomock.Any())
 			tracer.EXPECT().Close()
-			conn.CloseWithError(0, "")
+			conn.shutdown()
 			Eventually(conn.Context().Done()).Should(BeClosed())
 		})
 
@@ -1815,7 +1829,7 @@ var _ = Describe("Connection", func() {
 
 			go func() {
 				defer GinkgoRecover()
-				cryptoSetup.EXPECT().StartHandshake(gomock.Any()).MaxTimes(1)
+				cryptoSetup.EXPECT().StartHandshake().MaxTimes(1)
 				cryptoSetup.EXPECT().NextEvent().Return(handshake.Event{Kind: handshake.EventNoEvent})
 				conn.run()
 			}()
@@ -1849,7 +1863,7 @@ var _ = Describe("Connection", func() {
 			tracer.EXPECT().SentShortHeaderPacket(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
 			go func() {
 				defer GinkgoRecover()
-				cryptoSetup.EXPECT().StartHandshake(gomock.Any()).MaxTimes(1)
+				cryptoSetup.EXPECT().StartHandshake().MaxTimes(1)
 				cryptoSetup.EXPECT().NextEvent().Return(handshake.Event{Kind: handshake.EventNoEvent})
 				conn.run()
 			}()
@@ -1907,7 +1921,7 @@ var _ = Describe("Connection", func() {
 
 		go func() {
 			defer GinkgoRecover()
-			cryptoSetup.EXPECT().StartHandshake(gomock.Any()).MaxTimes(1)
+			cryptoSetup.EXPECT().StartHandshake().MaxTimes(1)
 			cryptoSetup.EXPECT().NextEvent().Return(handshake.Event{Kind: handshake.EventNoEvent})
 			conn.run()
 		}()
@@ -1923,7 +1937,7 @@ var _ = Describe("Connection", func() {
 		mconn.EXPECT().Write(gomock.Any(), gomock.Any(), gomock.Any())
 		tracer.EXPECT().ClosedConnection(gomock.Any())
 		tracer.EXPECT().Close()
-		conn.CloseWithError(0, "")
+		conn.shutdown()
 		Eventually(conn.Context().Done()).Should(BeClosed())
 	})
 
@@ -1989,7 +2003,7 @@ var _ = Describe("Connection", func() {
 		tracer.EXPECT().Close()
 		go func() {
 			defer GinkgoRecover()
-			cryptoSetup.EXPECT().StartHandshake(gomock.Any())
+			cryptoSetup.EXPECT().StartHandshake()
 			cryptoSetup.EXPECT().NextEvent().Return(handshake.Event{Kind: handshake.EventNoEvent})
 			conn.run()
 		}()
@@ -2015,7 +2029,7 @@ var _ = Describe("Connection", func() {
 		conn.sentPacketHandler = sph
 		done := make(chan struct{})
 		connRunner.EXPECT().Retire(clientDestConnID)
-		packer.EXPECT().AppendPacket(gomock.Any(), gomock.Any(), conn.version).DoAndReturn(func(_ *packetBuffer, _ protocol.ByteCount, v protocol.Version) (shortHeaderPacket, error) {
+		packer.EXPECT().AppendPacket(gomock.Any(), gomock.Any(), conn.version).DoAndReturn(func(_ *packetBuffer, _ protocol.ByteCount, v protocol.VersionNumber) (shortHeaderPacket, error) {
 			frames, _ := conn.framer.AppendControlFrames(nil, protocol.MaxByteCount, v)
 			Expect(frames).ToNot(BeEmpty())
 			Expect(frames[0].Frame).To(BeEquivalentTo(&wire.HandshakeDoneFrame{}))
@@ -2027,7 +2041,7 @@ var _ = Describe("Connection", func() {
 		sph.EXPECT().DropPackets(protocol.EncryptionHandshake)
 		go func() {
 			defer GinkgoRecover()
-			cryptoSetup.EXPECT().StartHandshake(gomock.Any())
+			cryptoSetup.EXPECT().StartHandshake()
 			cryptoSetup.EXPECT().NextEvent().Return(handshake.Event{Kind: handshake.EventHandshakeComplete})
 			cryptoSetup.EXPECT().NextEvent().Return(handshake.Event{Kind: handshake.EventNoEvent})
 			cryptoSetup.EXPECT().SetHandshakeConfirmed()
@@ -2045,7 +2059,7 @@ var _ = Describe("Connection", func() {
 		cryptoSetup.EXPECT().Close()
 		tracer.EXPECT().ClosedConnection(gomock.Any())
 		tracer.EXPECT().Close()
-		conn.CloseWithError(0, "")
+		conn.shutdown()
 		Eventually(conn.Context().Done()).Should(BeClosed())
 	})
 
@@ -2053,17 +2067,19 @@ var _ = Describe("Connection", func() {
 		done := make(chan struct{})
 		go func() {
 			defer GinkgoRecover()
-			cryptoSetup.EXPECT().StartHandshake(gomock.Any()).MaxTimes(1)
+			cryptoSetup.EXPECT().StartHandshake().MaxTimes(1)
 			cryptoSetup.EXPECT().NextEvent().Return(handshake.Event{Kind: handshake.EventNoEvent})
 			Expect(conn.run()).To(Succeed())
 			close(done)
 		}()
 		streamManager.EXPECT().CloseWithError(gomock.Any())
+		expectReplaceWithClosed()
+		packer.EXPECT().PackApplicationClose(gomock.Any(), gomock.Any(), conn.version).Return(&coalescedPacket{buffer: getPacketBuffer()}, nil)
 		cryptoSetup.EXPECT().Close()
-		connRunner.EXPECT().Remove(gomock.Any()).AnyTimes()
+		mconn.EXPECT().Write(gomock.Any(), gomock.Any(), gomock.Any())
 		tracer.EXPECT().ClosedConnection(gomock.Any())
 		tracer.EXPECT().Close()
-		conn.destroy(nil)
+		conn.shutdown()
 		Eventually(done).Should(BeClosed())
 		Expect(context.Cause(conn.Context())).To(MatchError(context.Canceled))
 	})
@@ -2077,7 +2093,7 @@ var _ = Describe("Connection", func() {
 		done := make(chan struct{})
 		go func() {
 			defer GinkgoRecover()
-			cryptoSetup.EXPECT().StartHandshake(gomock.Any()).MaxTimes(1)
+			cryptoSetup.EXPECT().StartHandshake().MaxTimes(1)
 			cryptoSetup.EXPECT().NextEvent().Return(handshake.Event{Kind: handshake.EventNoEvent})
 			err := conn.run()
 			Expect(err).To(MatchError(expectedErr))
@@ -2128,7 +2144,7 @@ var _ = Describe("Connection", func() {
 		runConn := func() {
 			go func() {
 				defer GinkgoRecover()
-				cryptoSetup.EXPECT().StartHandshake(gomock.Any()).MaxTimes(1)
+				cryptoSetup.EXPECT().StartHandshake().MaxTimes(1)
 				cryptoSetup.EXPECT().NextEvent().Return(handshake.Event{Kind: handshake.EventNoEvent})
 				conn.run()
 			}()
@@ -2149,7 +2165,7 @@ var _ = Describe("Connection", func() {
 			mconn.EXPECT().Write(gomock.Any(), gomock.Any(), gomock.Any())
 			tracer.EXPECT().ClosedConnection(gomock.Any())
 			tracer.EXPECT().Close()
-			conn.CloseWithError(0, "")
+			conn.shutdown()
 			Eventually(conn.Context().Done()).Should(BeClosed())
 		})
 
@@ -2157,7 +2173,7 @@ var _ = Describe("Connection", func() {
 			setRemoteIdleTimeout(5 * time.Second)
 			conn.lastPacketReceivedTime = time.Now().Add(-5 * time.Second / 2)
 			sent := make(chan struct{})
-			packer.EXPECT().PackCoalescedPacket(false, gomock.Any(), conn.version).Do(func(bool, protocol.ByteCount, protocol.Version) (*coalescedPacket, error) {
+			packer.EXPECT().PackCoalescedPacket(false, gomock.Any(), conn.version).Do(func(bool, protocol.ByteCount, protocol.VersionNumber) (*coalescedPacket, error) {
 				close(sent)
 				return nil, nil
 			})
@@ -2170,7 +2186,7 @@ var _ = Describe("Connection", func() {
 			setRemoteIdleTimeout(time.Hour)
 			conn.lastPacketReceivedTime = time.Now().Add(-protocol.MaxKeepAliveInterval).Add(-time.Millisecond)
 			sent := make(chan struct{})
-			packer.EXPECT().PackCoalescedPacket(false, gomock.Any(), conn.version).Do(func(bool, protocol.ByteCount, protocol.Version) (*coalescedPacket, error) {
+			packer.EXPECT().PackCoalescedPacket(false, gomock.Any(), conn.version).Do(func(bool, protocol.ByteCount, protocol.VersionNumber) (*coalescedPacket, error) {
 				close(sent)
 				return nil, nil
 			})
@@ -2203,7 +2219,7 @@ var _ = Describe("Connection", func() {
 			pto := conn.rttStats.PTO(true)
 			conn.lastPacketReceivedTime = time.Now()
 			sentPingTimeChan := make(chan time.Time)
-			packer.EXPECT().PackCoalescedPacket(false, gomock.Any(), conn.version).Do(func(bool, protocol.ByteCount, protocol.Version) (*coalescedPacket, error) {
+			packer.EXPECT().PackCoalescedPacket(false, gomock.Any(), conn.version).Do(func(bool, protocol.ByteCount, protocol.VersionNumber) (*coalescedPacket, error) {
 				sentPingTimeChan <- time.Now()
 				return nil, nil
 			})
@@ -2231,7 +2247,7 @@ var _ = Describe("Connection", func() {
 			)
 			go func() {
 				defer GinkgoRecover()
-				cryptoSetup.EXPECT().StartHandshake(gomock.Any()).MaxTimes(1)
+				cryptoSetup.EXPECT().StartHandshake().MaxTimes(1)
 				cryptoSetup.EXPECT().NextEvent().Return(handshake.Event{Kind: handshake.EventNoEvent})
 				err := conn.run()
 				nerr, ok := err.(net.Error)
@@ -2257,7 +2273,7 @@ var _ = Describe("Connection", func() {
 			done := make(chan struct{})
 			go func() {
 				defer GinkgoRecover()
-				cryptoSetup.EXPECT().StartHandshake(gomock.Any()).MaxTimes(1)
+				cryptoSetup.EXPECT().StartHandshake().MaxTimes(1)
 				cryptoSetup.EXPECT().NextEvent().Return(handshake.Event{Kind: handshake.EventNoEvent})
 				err := conn.run()
 				nerr, ok := err.(net.Error)
@@ -2274,7 +2290,7 @@ var _ = Describe("Connection", func() {
 			conn.config.HandshakeIdleTimeout = 9999 * time.Second
 			conn.config.MaxIdleTimeout = 9999 * time.Second
 			conn.lastPacketReceivedTime = time.Now().Add(-time.Minute)
-			packer.EXPECT().PackApplicationClose(gomock.Any(), gomock.Any(), conn.version).DoAndReturn(func(e *qerr.ApplicationError, _ protocol.ByteCount, _ protocol.Version) (*coalescedPacket, error) {
+			packer.EXPECT().PackApplicationClose(gomock.Any(), gomock.Any(), conn.version).DoAndReturn(func(e *qerr.ApplicationError, _ protocol.ByteCount, _ protocol.VersionNumber) (*coalescedPacket, error) {
 				Expect(e.ErrorCode).To(BeZero())
 				return &coalescedPacket{buffer: getPacketBuffer()}, nil
 			})
@@ -2291,7 +2307,7 @@ var _ = Describe("Connection", func() {
 			// and not on the last network activity
 			go func() {
 				defer GinkgoRecover()
-				cryptoSetup.EXPECT().StartHandshake(gomock.Any()).MaxTimes(1)
+				cryptoSetup.EXPECT().StartHandshake().MaxTimes(1)
 				cryptoSetup.EXPECT().NextEvent().Return(handshake.Event{Kind: handshake.EventNoEvent})
 				conn.run()
 			}()
@@ -2300,7 +2316,7 @@ var _ = Describe("Connection", func() {
 			expectReplaceWithClosed()
 			cryptoSetup.EXPECT().Close()
 			mconn.EXPECT().Write(gomock.Any(), gomock.Any(), gomock.Any())
-			conn.CloseWithError(0, "")
+			conn.shutdown()
 			Eventually(conn.Context().Done()).Should(BeClosed())
 		})
 
@@ -2319,7 +2335,7 @@ var _ = Describe("Connection", func() {
 			conn.handshakeComplete = false
 			go func() {
 				defer GinkgoRecover()
-				cryptoSetup.EXPECT().StartHandshake(gomock.Any()).MaxTimes(1)
+				cryptoSetup.EXPECT().StartHandshake().MaxTimes(1)
 				cryptoSetup.EXPECT().NextEvent().Return(handshake.Event{Kind: handshake.EventNoEvent})
 				cryptoSetup.EXPECT().GetSessionTicket().MaxTimes(1)
 				err := conn.run()
@@ -2352,7 +2368,7 @@ var _ = Describe("Connection", func() {
 			done := make(chan struct{})
 			go func() {
 				defer GinkgoRecover()
-				cryptoSetup.EXPECT().StartHandshake(gomock.Any()).MaxTimes(1)
+				cryptoSetup.EXPECT().StartHandshake().MaxTimes(1)
 				cryptoSetup.EXPECT().NextEvent().Return(handshake.Event{Kind: handshake.EventHandshakeComplete})
 				cryptoSetup.EXPECT().NextEvent().Return(handshake.Event{Kind: handshake.EventNoEvent})
 				cryptoSetup.EXPECT().GetSessionTicket().MaxTimes(1)
@@ -2375,7 +2391,7 @@ var _ = Describe("Connection", func() {
 			conn.idleTimeout = 30 * time.Second
 			go func() {
 				defer GinkgoRecover()
-				cryptoSetup.EXPECT().StartHandshake(gomock.Any()).MaxTimes(1)
+				cryptoSetup.EXPECT().StartHandshake().MaxTimes(1)
 				cryptoSetup.EXPECT().NextEvent().Return(handshake.Event{Kind: handshake.EventNoEvent})
 				conn.run()
 			}()
@@ -2387,7 +2403,7 @@ var _ = Describe("Connection", func() {
 			mconn.EXPECT().Write(gomock.Any(), gomock.Any(), gomock.Any())
 			tracer.EXPECT().ClosedConnection(gomock.Any())
 			tracer.EXPECT().Close()
-			conn.CloseWithError(0, "")
+			conn.shutdown()
 			Eventually(conn.Context().Done()).Should(BeClosed())
 		})
 
@@ -2407,7 +2423,7 @@ var _ = Describe("Connection", func() {
 			pto := conn.rttStats.PTO(true)
 			go func() {
 				defer GinkgoRecover()
-				cryptoSetup.EXPECT().StartHandshake(gomock.Any()).MaxTimes(1)
+				cryptoSetup.EXPECT().StartHandshake().MaxTimes(1)
 				cryptoSetup.EXPECT().NextEvent().Return(handshake.Event{Kind: handshake.EventNoEvent})
 				cryptoSetup.EXPECT().GetSessionTicket().MaxTimes(1)
 				cryptoSetup.EXPECT().SetHandshakeConfirmed().MaxTimes(1)
@@ -2486,39 +2502,6 @@ var _ = Describe("Connection", func() {
 		})
 	})
 
-	Context("datagrams", func() {
-		It("doesn't allow datagrams if the peer didn't enable support", func() {
-			conn.peerParams = &wire.TransportParameters{MaxDatagramFrameSize: 0}
-			Expect(conn.SendDatagram(make([]byte, 200))).To(MatchError("datagram support disabled"))
-		})
-
-		It("sends a datagram", func() {
-			conn.peerParams = &wire.TransportParameters{MaxDatagramFrameSize: 1000}
-			Expect(conn.SendDatagram([]byte("foobar"))).To(Succeed())
-			f := conn.datagramQueue.Peek()
-			Expect(f).ToNot(BeNil())
-			Expect(f.Data).To(Equal([]byte("foobar")))
-		})
-
-		It("says when a datagram is too big", func() {
-			conn.peerParams = &wire.TransportParameters{MaxDatagramFrameSize: 1000}
-			err := conn.SendDatagram(make([]byte, 2000))
-			Expect(err).To(HaveOccurred())
-			Expect(err).To(BeAssignableToTypeOf(&DatagramTooLargeError{}))
-			derr := err.(*DatagramTooLargeError)
-			Expect(derr.MaxDatagramPayloadSize).To(BeNumerically("<", 1000))
-			Expect(conn.SendDatagram(make([]byte, derr.MaxDatagramPayloadSize))).To(Succeed())
-		})
-
-		It("receives datagrams", func() {
-			conn.config.EnableDatagrams = true
-			conn.datagramQueue.HandleDatagramFrame(&wire.DatagramFrame{Data: []byte("foobar")})
-			data, err := conn.ReceiveDatagram(context.Background())
-			Expect(err).ToNot(HaveOccurred())
-			Expect(data).To(Equal([]byte("foobar")))
-		})
-	})
-
 	It("returns the local address", func() {
 		Expect(conn.LocalAddr()).To(Equal(localAddr))
 	})
@@ -2576,7 +2559,6 @@ var _ = Describe("Client Connection", func() {
 		tracer.EXPECT().UpdatedKeyFromTLS(gomock.Any(), gomock.Any()).AnyTimes()
 		tracer.EXPECT().UpdatedCongestionState(gomock.Any())
 		conn = newClientConnection(
-			context.Background(),
 			mconn,
 			connRunner,
 			destConnID,
@@ -2588,6 +2570,7 @@ var _ = Describe("Client Connection", func() {
 			false,
 			false,
 			tr,
+			1234,
 			utils.DefaultLogger,
 			protocol.Version1,
 		).(*connection)
@@ -2600,7 +2583,7 @@ var _ = Describe("Client Connection", func() {
 
 	It("changes the connection ID when receiving the first packet from the server", func() {
 		unpacker := NewMockUnpacker(mockCtrl)
-		unpacker.EXPECT().UnpackLongHeader(gomock.Any(), gomock.Any()).DoAndReturn(func(hdr *wire.Header, data []byte) (*unpackedPacket, error) {
+		unpacker.EXPECT().UnpackLongHeader(gomock.Any(), gomock.Any(), gomock.Any(), conn.version).DoAndReturn(func(hdr *wire.Header, _ time.Time, data []byte, _ protocol.VersionNumber) (*unpackedPacket, error) {
 			return &unpackedPacket{
 				encryptionLevel: protocol.Encryption1RTT,
 				hdr:             &wire.ExtendedHeader{Header: *hdr},
@@ -2609,7 +2592,7 @@ var _ = Describe("Client Connection", func() {
 		})
 		conn.unpacker = unpacker
 		done := make(chan struct{})
-		packer.EXPECT().PackCoalescedPacket(gomock.Any(), gomock.Any(), gomock.Any()).Do(func(onlyAck bool, maxPacketSize protocol.ByteCount, v protocol.Version) (*coalescedPacket, error) {
+		packer.EXPECT().PackCoalescedPacket(gomock.Any(), gomock.Any(), gomock.Any()).Do(func(onlyAck bool, maxPacketSize protocol.ByteCount, v protocol.VersionNumber) (*coalescedPacket, error) {
 			close(done)
 			return nil, nil
 		})
@@ -2628,7 +2611,7 @@ var _ = Describe("Client Connection", func() {
 		Expect(conn.handlePacketImpl(p)).To(BeTrue())
 		go func() {
 			defer GinkgoRecover()
-			cryptoSetup.EXPECT().StartHandshake(gomock.Any()).MaxTimes(1)
+			cryptoSetup.EXPECT().StartHandshake().MaxTimes(1)
 			cryptoSetup.EXPECT().NextEvent().Return(handshake.Event{Kind: handshake.EventNoEvent})
 			conn.run()
 		}()
@@ -2636,11 +2619,11 @@ var _ = Describe("Client Connection", func() {
 		// make sure the go routine returns
 		packer.EXPECT().PackApplicationClose(gomock.Any(), gomock.Any(), conn.version).Return(&coalescedPacket{buffer: getPacketBuffer()}, nil)
 		cryptoSetup.EXPECT().Close()
-		connRunner.EXPECT().ReplaceWithClosed([]protocol.ConnectionID{srcConnID}, gomock.Any())
+		connRunner.EXPECT().ReplaceWithClosed([]protocol.ConnectionID{srcConnID}, gomock.Any(), gomock.Any())
 		mconn.EXPECT().Write(gomock.Any(), gomock.Any(), gomock.Any()).MaxTimes(1)
 		tracer.EXPECT().ClosedConnection(gomock.Any())
 		tracer.EXPECT().Close()
-		conn.CloseWithError(0, "")
+		conn.shutdown()
 		Eventually(conn.Context().Done()).Should(BeClosed())
 		time.Sleep(200 * time.Millisecond)
 	})
@@ -2656,7 +2639,7 @@ var _ = Describe("Client Connection", func() {
 		})
 		Expect(conn.connIDManager.Get()).To(Equal(protocol.ParseConnectionID([]byte{1, 2, 3, 4, 5})))
 		// now receive a packet with the original source connection ID
-		unpacker.EXPECT().UnpackLongHeader(gomock.Any(), gomock.Any()).DoAndReturn(func(hdr *wire.Header, _ []byte) (*unpackedPacket, error) {
+		unpacker.EXPECT().UnpackLongHeader(gomock.Any(), gomock.Any(), gomock.Any(), conn.version).DoAndReturn(func(hdr *wire.Header, _ time.Time, _ []byte, _ protocol.VersionNumber) (*unpackedPacket, error) {
 			return &unpackedPacket{
 				hdr:             &wire.ExtendedHeader{Header: *hdr},
 				data:            []byte{0},
@@ -2702,7 +2685,7 @@ var _ = Describe("Client Connection", func() {
 		tracer.EXPECT().ClosedConnection(gomock.Any())
 		tracer.EXPECT().Close()
 		running := make(chan struct{})
-		cryptoSetup.EXPECT().StartHandshake(gomock.Any()).Do(func(context.Context) error {
+		cryptoSetup.EXPECT().StartHandshake().Do(func() error {
 			close(running)
 			conn.closeLocal(errors.New("early error"))
 			return nil
@@ -2719,22 +2702,24 @@ var _ = Describe("Client Connection", func() {
 	})
 
 	Context("handling tokens", func() {
-		var tokenStore TokenStore
+		var mockTokenStore *MockTokenStore
 
 		BeforeEach(func() {
+			mockTokenStore = NewMockTokenStore(mockCtrl)
 			tlsConf = &tls.Config{ServerName: "server"}
-			tokenStore = NewLRUTokenStore(10, 10)
-			quicConf.TokenStore = tokenStore
+			quicConf.TokenStore = mockTokenStore
+			mockTokenStore.EXPECT().Pop(gomock.Any())
+			quicConf.TokenStore = mockTokenStore
 		})
 
 		It("handles NEW_TOKEN frames", func() {
+			mockTokenStore.EXPECT().Put("server", &ClientToken{data: []byte("foobar")})
 			Expect(conn.handleNewTokenFrame(&wire.NewTokenFrame{Token: []byte("foobar")})).To(Succeed())
-			Expect(tokenStore.Pop("server")).To(Equal(&ClientToken{data: []byte("foobar")}))
 		})
 	})
 
 	Context("handling Version Negotiation", func() {
-		getVNP := func(versions ...protocol.Version) receivedPacket {
+		getVNP := func(versions ...protocol.VersionNumber) receivedPacket {
 			b := wire.ComposeVersionNegotiation(
 				protocol.ArbitraryLenConnectionID(srcConnID.Bytes()),
 				protocol.ArbitraryLenConnectionID(destConnID.Bytes()),
@@ -2752,12 +2737,12 @@ var _ = Describe("Client Connection", func() {
 			conn.sentPacketHandler = sph
 			sph.EXPECT().ReceivedBytes(gomock.Any())
 			sph.EXPECT().PeekPacketNumber(protocol.EncryptionInitial).Return(protocol.PacketNumber(128), protocol.PacketNumberLen4)
-			conn.config.Versions = []protocol.Version{1234, 4321}
+			conn.config.Versions = []protocol.VersionNumber{1234, 4321}
 			errChan := make(chan error, 1)
 			start := make(chan struct{})
 			go func() {
 				defer GinkgoRecover()
-				cryptoSetup.EXPECT().StartHandshake(gomock.Any()).MaxTimes(1)
+				cryptoSetup.EXPECT().StartHandshake().MaxTimes(1)
 				cryptoSetup.EXPECT().NextEvent().DoAndReturn(func() handshake.Event {
 					<-start
 					return handshake.Event{Kind: handshake.EventNoEvent}
@@ -2765,10 +2750,10 @@ var _ = Describe("Client Connection", func() {
 				errChan <- conn.run()
 			}()
 			connRunner.EXPECT().Remove(srcConnID)
-			tracer.EXPECT().ReceivedVersionNegotiationPacket(gomock.Any(), gomock.Any(), gomock.Any()).Do(func(_, _ protocol.ArbitraryLenConnectionID, versions []logging.Version) {
+			tracer.EXPECT().ReceivedVersionNegotiationPacket(gomock.Any(), gomock.Any(), gomock.Any()).Do(func(_, _ protocol.ArbitraryLenConnectionID, versions []logging.VersionNumber) {
 				Expect(versions).To(And(
-					ContainElement(protocol.Version(4321)),
-					ContainElement(protocol.Version(1337)),
+					ContainElement(protocol.VersionNumber(4321)),
+					ContainElement(protocol.VersionNumber(1337)),
 				))
 			})
 			cryptoSetup.EXPECT().Close()
@@ -2779,7 +2764,7 @@ var _ = Describe("Client Connection", func() {
 			Expect(err).To(HaveOccurred())
 			Expect(err).To(BeAssignableToTypeOf(&errCloseForRecreating{}))
 			recreateErr := err.(*errCloseForRecreating)
-			Expect(recreateErr.nextVersion).To(Equal(protocol.Version(4321)))
+			Expect(recreateErr.nextVersion).To(Equal(protocol.VersionNumber(4321)))
 			Expect(recreateErr.nextPacketNumber).To(Equal(protocol.PacketNumber(128)))
 		})
 
@@ -2788,7 +2773,7 @@ var _ = Describe("Client Connection", func() {
 			packer.EXPECT().PackCoalescedPacket(gomock.Any(), gomock.Any(), gomock.Any()).MaxTimes(1)
 			go func() {
 				defer GinkgoRecover()
-				cryptoSetup.EXPECT().StartHandshake(gomock.Any()).MaxTimes(1)
+				cryptoSetup.EXPECT().StartHandshake().MaxTimes(1)
 				cryptoSetup.EXPECT().NextEvent().Return(handshake.Event{Kind: handshake.EventNoEvent})
 				errChan <- conn.run()
 			}()
@@ -2798,7 +2783,7 @@ var _ = Describe("Client Connection", func() {
 				tracer.EXPECT().ClosedConnection(gomock.Any()).Do(func(e error) {
 					var vnErr *VersionNegotiationError
 					Expect(errors.As(e, &vnErr)).To(BeTrue())
-					Expect(vnErr.Theirs).To(ContainElement(logging.Version(12345678)))
+					Expect(vnErr.Theirs).To(ContainElement(logging.VersionNumber(12345678)))
 				}),
 				tracer.EXPECT().Close(),
 			)
@@ -2903,7 +2888,7 @@ var _ = Describe("Client Connection", func() {
 			packer.EXPECT().PackCoalescedPacket(gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
 			go func() {
 				defer GinkgoRecover()
-				cryptoSetup.EXPECT().StartHandshake(gomock.Any()).MaxTimes(1)
+				cryptoSetup.EXPECT().StartHandshake().MaxTimes(1)
 				// This is not 100% what would happen in reality.
 				// The run loop calls NextEvent once when it starts up (to send out the ClientHello),
 				// and then again every time a CRYPTO frame is handled.
@@ -2928,7 +2913,7 @@ var _ = Describe("Client Connection", func() {
 
 		expectClose := func(applicationClose, errored bool) {
 			if !closed && !errored {
-				connRunner.EXPECT().ReplaceWithClosed(gomock.Any(), gomock.Any())
+				connRunner.EXPECT().ReplaceWithClosed(gomock.Any(), gomock.Any(), gomock.Any())
 				if applicationClose {
 					packer.EXPECT().PackApplicationClose(gomock.Any(), gomock.Any(), conn.version).Return(&coalescedPacket{buffer: getPacketBuffer()}, nil).MaxTimes(1)
 				} else {
@@ -2945,7 +2930,7 @@ var _ = Describe("Client Connection", func() {
 		}
 
 		AfterEach(func() {
-			conn.CloseWithError(0, "")
+			conn.shutdown()
 			Eventually(conn.Context().Done()).Should(BeClosed())
 			Eventually(errChan).Should(BeClosed())
 		})
@@ -2989,7 +2974,7 @@ var _ = Describe("Client Connection", func() {
 			Eventually(processed).Should(BeClosed())
 			// close first
 			expectClose(true, false)
-			conn.CloseWithError(0, "")
+			conn.shutdown()
 			// then check. Avoids race condition when accessing idleTimeout
 			Expect(conn.idleTimeout).To(Equal(18 * time.Second))
 		})
@@ -3176,7 +3161,7 @@ var _ = Describe("Client Connection", func() {
 			Expect(hdr2.SrcConnectionID).ToNot(Equal(srcConnID))
 			// Send one packet, which might change the connection ID.
 			// only EXPECT one call to the unpacker
-			unpacker.EXPECT().UnpackLongHeader(gomock.Any(), gomock.Any()).Return(&unpackedPacket{
+			unpacker.EXPECT().UnpackLongHeader(gomock.Any(), gomock.Any(), gomock.Any(), conn.version).Return(&unpackedPacket{
 				encryptionLevel: protocol.EncryptionInitial,
 				hdr:             hdr1,
 				data:            []byte{0}, // one PADDING frame
@@ -3207,7 +3192,7 @@ var _ = Describe("Client Connection", func() {
 		// the connection to immediately break down
 		It("fails on Initial-level ACK for unsent packet", func() {
 			ack := &wire.AckFrame{AckRanges: []wire.AckRange{{Smallest: 2, Largest: 2}}}
-			initialPacket := testutils.ComposeInitialPacket(destConnID, srcConnID, destConnID, nil, []wire.Frame{ack}, protocol.PerspectiveServer, conn.version)
+			initialPacket := testutils.ComposeInitialPacket(destConnID, srcConnID, conn.version, destConnID, []wire.Frame{ack})
 			tracer.EXPECT().ReceivedLongHeaderPacket(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any())
 			Expect(conn.handlePacketImpl(wrapPacket(initialPacket))).To(BeFalse())
 		})
@@ -3219,7 +3204,7 @@ var _ = Describe("Client Connection", func() {
 				IsApplicationError: true,
 				ReasonPhrase:       "mitm attacker",
 			}
-			initialPacket := testutils.ComposeInitialPacket(destConnID, srcConnID, destConnID, nil, []wire.Frame{connCloseFrame}, protocol.PerspectiveServer, conn.version)
+			initialPacket := testutils.ComposeInitialPacket(destConnID, srcConnID, conn.version, destConnID, []wire.Frame{connCloseFrame})
 			tracer.EXPECT().ReceivedLongHeaderPacket(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any())
 			Expect(conn.handlePacketImpl(wrapPacket(initialPacket))).To(BeTrue())
 		})
@@ -3237,7 +3222,7 @@ var _ = Describe("Client Connection", func() {
 
 			tracer.EXPECT().ReceivedRetry(gomock.Any())
 			conn.handlePacketImpl(wrapPacket(testutils.ComposeRetryPacket(newSrcConnID, destConnID, destConnID, []byte("foobar"), conn.version)))
-			initialPacket := testutils.ComposeInitialPacket(conn.connIDManager.Get(), srcConnID, conn.connIDManager.Get(), nil, nil, protocol.PerspectiveServer, conn.version)
+			initialPacket := testutils.ComposeInitialPacket(conn.connIDManager.Get(), srcConnID, conn.version, conn.connIDManager.Get(), nil)
 			tracer.EXPECT().DroppedPacket(gomock.Any(), protocol.InvalidPacketNumber, gomock.Any(), gomock.Any())
 			Expect(conn.handlePacketImpl(wrapPacket(initialPacket))).To(BeFalse())
 		})

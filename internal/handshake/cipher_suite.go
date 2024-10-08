@@ -18,7 +18,7 @@ type cipherSuite struct {
 	ID     uint16
 	Hash   crypto.Hash
 	KeyLen int
-	AEAD   func(key, nonceMask []byte) *xorNonceAEAD
+	AEAD   func(key, nonceMask []byte) cipher.AEAD
 }
 
 func (s cipherSuite) IVLen() int { return aeadNonceLength }
@@ -36,7 +36,7 @@ func getCipherSuite(id uint16) *cipherSuite {
 	}
 }
 
-func aeadAESGCMTLS13(key, nonceMask []byte) *xorNonceAEAD {
+func aeadAESGCMTLS13(key, nonceMask []byte) cipher.AEAD {
 	if len(nonceMask) != aeadNonceLength {
 		panic("tls: internal error: wrong nonce length")
 	}
@@ -54,7 +54,7 @@ func aeadAESGCMTLS13(key, nonceMask []byte) *xorNonceAEAD {
 	return ret
 }
 
-func aeadChaCha20Poly1305(key, nonceMask []byte) *xorNonceAEAD {
+func aeadChaCha20Poly1305(key, nonceMask []byte) cipher.AEAD {
 	if len(nonceMask) != aeadNonceLength {
 		panic("tls: internal error: wrong nonce length")
 	}

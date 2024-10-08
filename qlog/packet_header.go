@@ -43,7 +43,7 @@ type packetHeader struct {
 	KeyPhaseBit  logging.KeyPhaseBit
 	PacketNumber logging.PacketNumber
 
-	Version          logging.Version
+	Version          logging.VersionNumber
 	SrcConnectionID  logging.ConnectionID
 	DestConnectionID logging.ConnectionID
 
@@ -76,7 +76,7 @@ func (h packetHeader) MarshalJSONObject(enc *gojay.Encoder) {
 		enc.Int64Key("packet_number", int64(h.PacketNumber))
 	}
 	if h.Version != 0 {
-		enc.StringKey("version", version(h.Version).String())
+		enc.StringKey("version", versionNumber(h.Version).String())
 	}
 	if h.PacketType != logging.PacketType1RTT {
 		enc.IntKey("scil", h.SrcConnectionID.Len())

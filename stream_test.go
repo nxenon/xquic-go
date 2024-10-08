@@ -1,7 +1,6 @@
 package quic
 
 import (
-	"context"
 	"errors"
 	"io"
 	"os"
@@ -42,7 +41,7 @@ var _ = Describe("Stream", func() {
 	BeforeEach(func() {
 		mockSender = NewMockStreamSender(mockCtrl)
 		mockFC = mocks.NewMockStreamFlowController(mockCtrl)
-		str = newStream(context.Background(), streamID, mockSender, mockFC)
+		str = newStream(streamID, mockSender, mockFC)
 
 		timeout := scaleDuration(250 * time.Millisecond)
 		strWithTimeout = struct {

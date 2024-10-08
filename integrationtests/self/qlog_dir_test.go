@@ -36,7 +36,7 @@ var _ = Describe("qlog dir tests", Serial, func() {
 			"localhost:0",
 			getTLSConfig(),
 			&quic.Config{
-				Tracer: qlog.DefaultConnectionTracer,
+				Tracer: qlog.DefaultTracer,
 			},
 		)
 		Expect(err).ToNot(HaveOccurred())
@@ -56,7 +56,7 @@ var _ = Describe("qlog dir tests", Serial, func() {
 			server.Addr().String(),
 			getTLSClientConfig(),
 			&quic.Config{
-				Tracer: qlog.DefaultConnectionTracer,
+				Tracer: qlog.DefaultTracer,
 			},
 		)
 		Expect(err).ToNot(HaveOccurred())
@@ -78,10 +78,9 @@ var _ = Describe("qlog dir tests", Serial, func() {
 		Expect(len(childs)).To(Equal(2))
 		odcids := make([]string, 0)
 		vantagePoints := make([]string, 0)
-		qlogFileNameRegexp := regexp.MustCompile(`^([0-f]+)_(client|server).sqlog$`)
+		qlogFileNameRegexp := regexp.MustCompile(`^([0-f]+)_(client|server).qlog$`)
 		for _, child := range childs {
 			matches := qlogFileNameRegexp.FindStringSubmatch(child.Name())
-			Expect(matches).To(HaveLen(3))
 			odcids = append(odcids, matches[1])
 			vantagePoints = append(vantagePoints, matches[2])
 		}

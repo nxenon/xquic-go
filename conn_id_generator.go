@@ -19,7 +19,7 @@ type connIDGenerator struct {
 	getStatelessResetToken func(protocol.ConnectionID) protocol.StatelessResetToken
 	removeConnectionID     func(protocol.ConnectionID)
 	retireConnectionID     func(protocol.ConnectionID)
-	replaceWithClosed      func([]protocol.ConnectionID, []byte)
+	replaceWithClosed      func([]protocol.ConnectionID, protocol.Perspective, []byte)
 	queueControlFrame      func(wire.Frame)
 }
 
@@ -30,7 +30,7 @@ func newConnIDGenerator(
 	getStatelessResetToken func(protocol.ConnectionID) protocol.StatelessResetToken,
 	removeConnectionID func(protocol.ConnectionID),
 	retireConnectionID func(protocol.ConnectionID),
-	replaceWithClosed func([]protocol.ConnectionID, []byte),
+	replaceWithClosed func([]protocol.ConnectionID, protocol.Perspective, []byte),
 	queueControlFrame func(wire.Frame),
 	generator ConnectionIDGenerator,
 ) *connIDGenerator {
@@ -126,7 +126,7 @@ func (m *connIDGenerator) RemoveAll() {
 	}
 }
 
-func (m *connIDGenerator) ReplaceWithClosed(connClose []byte) {
+func (m *connIDGenerator) ReplaceWithClosed(pers protocol.Perspective, connClose []byte) {
 	connIDs := make([]protocol.ConnectionID, 0, len(m.activeSrcConnIDs)+1)
 	if m.initialClientDestConnID != nil {
 		connIDs = append(connIDs, *m.initialClientDestConnID)
@@ -134,5 +134,5 @@ func (m *connIDGenerator) ReplaceWithClosed(connClose []byte) {
 	for _, connID := range m.activeSrcConnIDs {
 		connIDs = append(connIDs, connID)
 	}
-	m.replaceWithClosed(connIDs, connClose)
+	m.replaceWithClosed(connIDs, pers, connClose)
 }

@@ -1,6 +1,7 @@
 package wire
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"io"
@@ -17,50 +18,46 @@ type NewConnectionIDFrame struct {
 	StatelessResetToken protocol.StatelessResetToken
 }
 
-func parseNewConnectionIDFrame(b []byte, _ protocol.Version) (*NewConnectionIDFrame, int, error) {
-	startLen := len(b)
-	seq, l, err := quicvarint.Parse(b)
+func parseNewConnectionIDFrame(r *bytes.Reader, _ protocol.VersionNumber) (*NewConnectionIDFrame, error) {
+	seq, err := quicvarint.Read(r)
 	if err != nil {
-		return nil, 0, replaceUnexpectedEOF(err)
+		return nil, err
 	}
-	b = b[l:]
-	ret, l, err := quicvarint.Parse(b)
+	ret, err := quicvarint.Read(r)
 	if err != nil {
-		return nil, 0, replaceUnexpectedEOF(err)
+		return nil, err
 	}
-	b = b[l:]
 	if ret > seq {
 		//nolint:stylecheck
-		return nil, 0, fmt.Errorf("Retire Prior To value (%d) larger than Sequence Number (%d)", ret, seq)
+		return nil, fmt.Errorf("Retire Prior To value (%d) larger than Sequence Number (%d)", ret, seq)
 	}
-	if len(b) == 0 {
-		return nil, 0, io.EOF
+	connIDLen, err := r.ReadByte()
+	if err != nil {
+		return nil, err
 	}
-	connIDLen := int(b[0])
-	b = b[1:]
 	if connIDLen == 0 {
-		return nil, 0, errors.New("invalid zero-length connection ID")
+		return nil, errors.New("invalid zero-length connection ID")
 	}
-	if connIDLen > protocol.MaxConnIDLen {
-		return nil, 0, protocol.ErrInvalidConnectionIDLen
-	}
-	if len(b) < connIDLen {
-		return nil, 0, io.EOF
+	connID, err := protocol.ReadConnectionID(r, int(connIDLen))
+	if err != nil {
+		return nil, err
 	}
 	frame := &NewConnectionIDFrame{
 		SequenceNumber: seq,
 		RetirePriorTo:  ret,
-		ConnectionID:   protocol.ParseConnectionID(b[:connIDLen]),
+		ConnectionID:   connID,
 	}
-	b = b[connIDLen:]
-	if len(b) < len(frame.StatelessResetToken) {
-		return nil, 0, io.EOF
+	if _, err := io.ReadFull(r, frame.StatelessResetToken[:]); err != nil {
+		if err == io.ErrUnexpectedEOF {
+			return nil, io.EOF
+		}
+		return nil, err
 	}
-	copy(frame.StatelessResetToken[:], b)
-	return frame, startLen - len(b) + len(frame.StatelessResetToken), nil
+
+	return frame, nil
 }
 
-func (f *NewConnectionIDFrame) Append(b []byte, _ protocol.Version) ([]byte, error) {
+func (f *NewConnectionIDFrame) Append(b []byte, _ protocol.VersionNumber) ([]byte, error) {
 	b = append(b, newConnectionIDFrameType)
 	b = quicvarint.Append(b, f.SequenceNumber)
 	b = quicvarint.Append(b, f.RetirePriorTo)
@@ -75,6 +72,6 @@ func (f *NewConnectionIDFrame) Append(b []byte, _ protocol.Version) ([]byte, err
 }
 
 // Length of a written frame
-func (f *NewConnectionIDFrame) Length(protocol.Version) protocol.ByteCount {
-	return 1 + protocol.ByteCount(quicvarint.Len(f.SequenceNumber)+quicvarint.Len(f.RetirePriorTo)+1 /* connection ID length */ +f.ConnectionID.Len()) + 16
+func (f *NewConnectionIDFrame) Length(protocol.VersionNumber) protocol.ByteCount {
+	return 1 + quicvarint.Len(f.SequenceNumber) + quicvarint.Len(f.RetirePriorTo) + 1 /* connection ID length */ + protocol.ByteCount(f.ConnectionID.Len()) + 16
 }

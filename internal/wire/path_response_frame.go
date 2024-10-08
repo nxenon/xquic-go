@@ -1,6 +1,7 @@
 package wire
 
 import (
+	"bytes"
 	"io"
 
 	"github.com/quic-go/quic-go/internal/protocol"
@@ -11,22 +12,24 @@ type PathResponseFrame struct {
 	Data [8]byte
 }
 
-func parsePathResponseFrame(b []byte, _ protocol.Version) (*PathResponseFrame, int, error) {
-	f := &PathResponseFrame{}
-	if len(b) < 8 {
-		return nil, 0, io.EOF
+func parsePathResponseFrame(r *bytes.Reader, _ protocol.VersionNumber) (*PathResponseFrame, error) {
+	frame := &PathResponseFrame{}
+	if _, err := io.ReadFull(r, frame.Data[:]); err != nil {
+		if err == io.ErrUnexpectedEOF {
+			return nil, io.EOF
+		}
+		return nil, err
 	}
-	copy(f.Data[:], b)
-	return f, 8, nil
+	return frame, nil
 }
 
-func (f *PathResponseFrame) Append(b []byte, _ protocol.Version) ([]byte, error) {
+func (f *PathResponseFrame) Append(b []byte, _ protocol.VersionNumber) ([]byte, error) {
 	b = append(b, pathResponseFrameType)
 	b = append(b, f.Data[:]...)
 	return b, nil
 }
 
 // Length of a written frame
-func (f *PathResponseFrame) Length(_ protocol.Version) protocol.ByteCount {
+func (f *PathResponseFrame) Length(_ protocol.VersionNumber) protocol.ByteCount {
 	return 1 + 8
 }

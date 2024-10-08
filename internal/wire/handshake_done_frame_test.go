@@ -1,16 +1,24 @@
 package wire
 
 import (
-	"testing"
-
 	"github.com/quic-go/quic-go/internal/protocol"
-	"github.com/stretchr/testify/require"
+
+	. "github.com/onsi/ginkgo/v2"
+	. "github.com/onsi/gomega"
 )
 
-func TestWriteHandshakeDoneSampleFrame(t *testing.T) {
-	frame := HandshakeDoneFrame{}
-	b, err := frame.Append(nil, protocol.Version1)
-	require.NoError(t, err)
-	require.Equal(t, []byte{handshakeDoneFrameType}, b)
-	require.Equal(t, protocol.ByteCount(1), frame.Length(protocol.Version1))
-}
+var _ = Describe("HANDSHAKE_DONE frame", func() {
+	Context("when writing", func() {
+		It("writes a sample frame", func() {
+			frame := HandshakeDoneFrame{}
+			b, err := frame.Append(nil, protocol.Version1)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(b).To(Equal([]byte{handshakeDoneFrameType}))
+		})
+
+		It("has the correct min length", func() {
+			frame := HandshakeDoneFrame{}
+			Expect(frame.Length(protocol.Version1)).To(Equal(protocol.ByteCount(1)))
+		})
+	})
+})

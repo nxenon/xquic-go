@@ -5,7 +5,6 @@
 //
 //	mockgen -typed -build_flags=-tags=gomock -package quic -self_package github.com/quic-go/quic-go -destination mock_sealing_manager_test.go github.com/quic-go/quic-go SealingManager
 //
-
 // Package quic is a generated GoMock package.
 package quic
 
@@ -49,31 +48,31 @@ func (m *MockSealingManager) Get0RTTSealer() (handshake.LongHeaderSealer, error)
 }
 
 // Get0RTTSealer indicates an expected call of Get0RTTSealer.
-func (mr *MockSealingManagerMockRecorder) Get0RTTSealer() *MockSealingManagerGet0RTTSealerCall {
+func (mr *MockSealingManagerMockRecorder) Get0RTTSealer() *SealingManagerGet0RTTSealerCall {
 	mr.mock.ctrl.T.Helper()
 	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Get0RTTSealer", reflect.TypeOf((*MockSealingManager)(nil).Get0RTTSealer))
-	return &MockSealingManagerGet0RTTSealerCall{Call: call}
+	return &SealingManagerGet0RTTSealerCall{Call: call}
 }
 
-// MockSealingManagerGet0RTTSealerCall wrap *gomock.Call
-type MockSealingManagerGet0RTTSealerCall struct {
+// SealingManagerGet0RTTSealerCall wrap *gomock.Call
+type SealingManagerGet0RTTSealerCall struct {
 	*gomock.Call
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *MockSealingManagerGet0RTTSealerCall) Return(arg0 handshake.LongHeaderSealer, arg1 error) *MockSealingManagerGet0RTTSealerCall {
+func (c *SealingManagerGet0RTTSealerCall) Return(arg0 handshake.LongHeaderSealer, arg1 error) *SealingManagerGet0RTTSealerCall {
 	c.Call = c.Call.Return(arg0, arg1)
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockSealingManagerGet0RTTSealerCall) Do(f func() (handshake.LongHeaderSealer, error)) *MockSealingManagerGet0RTTSealerCall {
+func (c *SealingManagerGet0RTTSealerCall) Do(f func() (handshake.LongHeaderSealer, error)) *SealingManagerGet0RTTSealerCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockSealingManagerGet0RTTSealerCall) DoAndReturn(f func() (handshake.LongHeaderSealer, error)) *MockSealingManagerGet0RTTSealerCall {
+func (c *SealingManagerGet0RTTSealerCall) DoAndReturn(f func() (handshake.LongHeaderSealer, error)) *SealingManagerGet0RTTSealerCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
@@ -88,31 +87,31 @@ func (m *MockSealingManager) Get1RTTSealer() (handshake.ShortHeaderSealer, error
 }
 
 // Get1RTTSealer indicates an expected call of Get1RTTSealer.
-func (mr *MockSealingManagerMockRecorder) Get1RTTSealer() *MockSealingManagerGet1RTTSealerCall {
+func (mr *MockSealingManagerMockRecorder) Get1RTTSealer() *SealingManagerGet1RTTSealerCall {
 	mr.mock.ctrl.T.Helper()
 	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Get1RTTSealer", reflect.TypeOf((*MockSealingManager)(nil).Get1RTTSealer))
-	return &MockSealingManagerGet1RTTSealerCall{Call: call}
+	return &SealingManagerGet1RTTSealerCall{Call: call}
 }
 
-// MockSealingManagerGet1RTTSealerCall wrap *gomock.Call
-type MockSealingManagerGet1RTTSealerCall struct {
+// SealingManagerGet1RTTSealerCall wrap *gomock.Call
+type SealingManagerGet1RTTSealerCall struct {
 	*gomock.Call
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *MockSealingManagerGet1RTTSealerCall) Return(arg0 handshake.ShortHeaderSealer, arg1 error) *MockSealingManagerGet1RTTSealerCall {
+func (c *SealingManagerGet1RTTSealerCall) Return(arg0 handshake.ShortHeaderSealer, arg1 error) *SealingManagerGet1RTTSealerCall {
 	c.Call = c.Call.Return(arg0, arg1)
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockSealingManagerGet1RTTSealerCall) Do(f func() (handshake.ShortHeaderSealer, error)) *MockSealingManagerGet1RTTSealerCall {
+func (c *SealingManagerGet1RTTSealerCall) Do(f func() (handshake.ShortHeaderSealer, error)) *SealingManagerGet1RTTSealerCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockSealingManagerGet1RTTSealerCall) DoAndReturn(f func() (handshake.ShortHeaderSealer, error)) *MockSealingManagerGet1RTTSealerCall {
+func (c *SealingManagerGet1RTTSealerCall) DoAndReturn(f func() (handshake.ShortHeaderSealer, error)) *SealingManagerGet1RTTSealerCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
@@ -127,31 +126,31 @@ func (m *MockSealingManager) GetHandshakeSealer() (handshake.LongHeaderSealer, e
 }
 
 // GetHandshakeSealer indicates an expected call of GetHandshakeSealer.
-func (mr *MockSealingManagerMockRecorder) GetHandshakeSealer() *MockSealingManagerGetHandshakeSealerCall {
+func (mr *MockSealingManagerMockRecorder) GetHandshakeSealer() *SealingManagerGetHandshakeSealerCall {
 	mr.mock.ctrl.T.Helper()
 	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetHandshakeSealer", reflect.TypeOf((*MockSealingManager)(nil).GetHandshakeSealer))
-	return &MockSealingManagerGetHandshakeSealerCall{Call: call}
+	return &SealingManagerGetHandshakeSealerCall{Call: call}
 }
 
-// MockSealingManagerGetHandshakeSealerCall wrap *gomock.Call
-type MockSealingManagerGetHandshakeSealerCall struct {
+// SealingManagerGetHandshakeSealerCall wrap *gomock.Call
+type SealingManagerGetHandshakeSealerCall struct {
 	*gomock.Call
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *MockSealingManagerGetHandshakeSealerCall) Return(arg0 handshake.LongHeaderSealer, arg1 error) *MockSealingManagerGetHandshakeSealerCall {
+func (c *SealingManagerGetHandshakeSealerCall) Return(arg0 handshake.LongHeaderSealer, arg1 error) *SealingManagerGetHandshakeSealerCall {
 	c.Call = c.Call.Return(arg0, arg1)
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockSealingManagerGetHandshakeSealerCall) Do(f func() (handshake.LongHeaderSealer, error)) *MockSealingManagerGetHandshakeSealerCall {
+func (c *SealingManagerGetHandshakeSealerCall) Do(f func() (handshake.LongHeaderSealer, error)) *SealingManagerGetHandshakeSealerCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockSealingManagerGetHandshakeSealerCall) DoAndReturn(f func() (handshake.LongHeaderSealer, error)) *MockSealingManagerGetHandshakeSealerCall {
+func (c *SealingManagerGetHandshakeSealerCall) DoAndReturn(f func() (handshake.LongHeaderSealer, error)) *SealingManagerGetHandshakeSealerCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
@@ -166,31 +165,31 @@ func (m *MockSealingManager) GetInitialSealer() (handshake.LongHeaderSealer, err
 }
 
 // GetInitialSealer indicates an expected call of GetInitialSealer.
-func (mr *MockSealingManagerMockRecorder) GetInitialSealer() *MockSealingManagerGetInitialSealerCall {
+func (mr *MockSealingManagerMockRecorder) GetInitialSealer() *SealingManagerGetInitialSealerCall {
 	mr.mock.ctrl.T.Helper()
 	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetInitialSealer", reflect.TypeOf((*MockSealingManager)(nil).GetInitialSealer))
-	return &MockSealingManagerGetInitialSealerCall{Call: call}
+	return &SealingManagerGetInitialSealerCall{Call: call}
 }
 
-// MockSealingManagerGetInitialSealerCall wrap *gomock.Call
-type MockSealingManagerGetInitialSealerCall struct {
+// SealingManagerGetInitialSealerCall wrap *gomock.Call
+type SealingManagerGetInitialSealerCall struct {
 	*gomock.Call
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *MockSealingManagerGetInitialSealerCall) Return(arg0 handshake.LongHeaderSealer, arg1 error) *MockSealingManagerGetInitialSealerCall {
+func (c *SealingManagerGetInitialSealerCall) Return(arg0 handshake.LongHeaderSealer, arg1 error) *SealingManagerGetInitialSealerCall {
 	c.Call = c.Call.Return(arg0, arg1)
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockSealingManagerGetInitialSealerCall) Do(f func() (handshake.LongHeaderSealer, error)) *MockSealingManagerGetInitialSealerCall {
+func (c *SealingManagerGetInitialSealerCall) Do(f func() (handshake.LongHeaderSealer, error)) *SealingManagerGetInitialSealerCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockSealingManagerGetInitialSealerCall) DoAndReturn(f func() (handshake.LongHeaderSealer, error)) *MockSealingManagerGetInitialSealerCall {
+func (c *SealingManagerGetInitialSealerCall) DoAndReturn(f func() (handshake.LongHeaderSealer, error)) *SealingManagerGetInitialSealerCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }

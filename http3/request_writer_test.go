@@ -6,6 +6,7 @@ import (
 	"net/http"
 
 	mockquic "github.com/quic-go/quic-go/internal/mocks/quic"
+	"github.com/quic-go/quic-go/internal/utils"
 
 	"github.com/quic-go/qpack"
 	"go.uber.org/mock/gomock"
@@ -22,8 +23,7 @@ var _ = Describe("Request Writer", func() {
 	)
 
 	decode := func(str io.Reader) map[string]string {
-		fp := frameParser{r: str}
-		frame, err := fp.ParseNext()
+		frame, err := parseNextFrame(str, nil)
 		ExpectWithOffset(1, err).ToNot(HaveOccurred())
 		ExpectWithOffset(1, frame).To(BeAssignableToTypeOf(&headersFrame{}))
 		headersFrame := frame.(*headersFrame)
@@ -41,7 +41,7 @@ var _ = Describe("Request Writer", func() {
 	}
 
 	BeforeEach(func() {
-		rw = newRequestWriter()
+		rw = newRequestWriter(utils.DefaultLogger)
 		strBuf = &bytes.Buffer{}
 		str = mockquic.NewMockStream(mockCtrl)
 		str.EXPECT().Write(gomock.Any()).DoAndReturn(strBuf.Write).AnyTimes()

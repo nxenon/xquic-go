@@ -5,26 +5,19 @@ import (
 	"bytes"
 	"compress/gzip"
 	"context"
-	"crypto/tls"
-	"encoding/binary"
 	"errors"
 	"fmt"
 	"io"
 	"net"
 	"net/http"
-	"net/http/httptrace"
-	"net/textproto"
-	"net/url"
 	"os"
 	"strconv"
-	"sync/atomic"
 	"time"
 
 	"golang.org/x/sync/errgroup"
 
 	"github.com/quic-go/quic-go"
 	"github.com/quic-go/quic-go/http3"
-	quicproxy "github.com/quic-go/quic-go/integrationtests/tools/proxy"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -93,7 +86,7 @@ var _ = Describe("HTTP tests", func() {
 		server = &http3.Server{
 			Handler:    mux,
 			TLSConfig:  getTLSConfig(),
-			QUICConfig: getQuicConfig(&quic.Config{Allow0RTT: true, EnableDatagrams: true}),
+			QuicConfig: getQuicConfig(nil),
 		}
 
 		addr, err := net.ResolveUDPAddr("udp", "0.0.0.0:0")
@@ -119,25 +112,11 @@ var _ = Describe("HTTP tests", func() {
 
 	BeforeEach(func() {
 		rt = &http3.RoundTripper{
-			TLSClientConfig: getTLSClientConfigWithoutServerName(),
-			QUICConfig: getQuicConfig(&quic.Config{
-				MaxIdleTimeout: 10 * time.Second,
-			}),
+			TLSClientConfig:    getTLSClientConfigWithoutServerName(),
 			DisableCompression: true,
+			QuicConfig:         getQuicConfig(&quic.Config{MaxIdleTimeout: 10 * time.Second}),
 		}
 		client = &http.Client{Transport: rt}
-	})
-
-	It("closes the connection after idle timeout", func() {
-		server.IdleTimeout = 100 * time.Millisecond
-		_, err := client.Get(fmt.Sprintf("https://localhost:%d/hello", port))
-		Expect(err).ToNot(HaveOccurred())
-
-		time.Sleep(150 * time.Millisecond)
-
-		_, err = client.Get(fmt.Sprintf("https://localhost:%d/hello", port))
-		Expect(err).ToNot(MatchError("idle timeout"))
-		server.IdleTimeout = 0
 	})
 
 	It("downloads a hello", func() {
@@ -152,37 +131,13 @@ var _ = Describe("HTTP tests", func() {
 	It("sets content-length for small response", func() {
 		mux.HandleFunc("/small", func(w http.ResponseWriter, r *http.Request) {
 			defer GinkgoRecover()
-			w.Write([]byte("foo"))
-			w.Write([]byte("bar"))
+			w.Write([]byte("foobar"))
 		})
 
 		resp, err := client.Get(fmt.Sprintf("https://localhost:%d/small", port))
 		Expect(err).ToNot(HaveOccurred())
 		Expect(resp.StatusCode).To(Equal(200))
-		Expect(resp.Header.Get("Content-Length")).To(Equal("6"))
-	})
-
-	It("re-establishes a QUIC connection after a dial error", func() {
-		var dialCounter int
-		testErr := errors.New("test error")
-		cl := http.Client{
-			Transport: &http3.RoundTripper{
-				TLSClientConfig: getTLSClientConfig(),
-				Dial: func(ctx context.Context, addr string, tlsConf *tls.Config, conf *quic.Config) (quic.EarlyConnection, error) {
-					dialCounter++
-					if dialCounter == 1 { // make the first dial fail
-						return nil, testErr
-					}
-					return quic.DialAddrEarly(ctx, addr, tlsConf, conf)
-				},
-			},
-		}
-		defer cl.Transport.(io.Closer).Close()
-		_, err := cl.Get(fmt.Sprintf("https://localhost:%d/hello", port))
-		Expect(err).To(MatchError(testErr))
-		resp, err := cl.Get(fmt.Sprintf("https://localhost:%d/hello", port))
-		Expect(err).ToNot(HaveOccurred())
-		Expect(resp.StatusCode).To(Equal(http.StatusOK))
+		Expect(resp.Header.Get("Content-Length")).To(Equal(strconv.Itoa(len("foobar"))))
 	})
 
 	It("detects stream errors when server panics when writing response", func() {
@@ -223,7 +178,6 @@ var _ = Describe("HTTP tests", func() {
 		group, ctx := errgroup.WithContext(context.Background())
 		for i := 0; i < 2; i++ {
 			group.Go(func() error {
-				defer GinkgoRecover()
 				req, err := http.NewRequestWithContext(ctx, http.MethodGet, fmt.Sprintf("https://localhost:%d/hello", port), nil)
 				Expect(err).ToNot(HaveOccurred())
 				resp, err := client.Do(req)
@@ -289,7 +243,6 @@ var _ = Describe("HTTP tests", func() {
 		Expect(resp.StatusCode).To(Equal(200))
 		body, err := io.ReadAll(gbytes.TimeoutReader(resp.Body, 20*time.Second))
 		Expect(err).ToNot(HaveOccurred())
-		Expect(resp.ContentLength).To(BeEquivalentTo(-1))
 		Expect(body).To(Equal(PRDataLong))
 	})
 
@@ -386,9 +339,9 @@ var _ = Describe("HTTP tests", func() {
 		mux.HandleFunc("/cancel", func(w http.ResponseWriter, r *http.Request) {
 			defer GinkgoRecover()
 			defer close(handlerCalled)
-			// TODO(4508): check for request context cancellations
 			for {
 				if _, err := w.Write([]byte("foobar")); err != nil {
+					Expect(r.Context().Done()).To(BeClosed())
 					var http3Err *http3.Error
 					Expect(errors.As(err, &http3Err)).To(BeTrue())
 					Expect(http3Err.ErrorCode).To(Equal(http3.ErrCode(0x10c)))
@@ -453,13 +406,12 @@ var _ = Describe("HTTP tests", func() {
 	})
 
 	It("allows taking over the stream", func() {
-		handlerCalled := make(chan struct{})
 		mux.HandleFunc("/httpstreamer", func(w http.ResponseWriter, r *http.Request) {
 			defer GinkgoRecover()
-			close(handlerCalled)
-			w.WriteHeader(http.StatusOK)
+			w.WriteHeader(200)
+			w.(http.Flusher).Flush()
 
-			str := w.(http3.HTTPStreamer).HTTPStream()
+			str := r.Body.(http3.HTTPStreamer).HTTPStream()
 			str.Write([]byte("foobar"))
 
 			// Do this in a Go routine, so that the handler returns early.
@@ -474,27 +426,11 @@ var _ = Describe("HTTP tests", func() {
 
 		req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("https://localhost:%d/httpstreamer", port), nil)
 		Expect(err).ToNot(HaveOccurred())
-		tlsConf := getTLSClientConfigWithoutServerName()
-		tlsConf.NextProtos = []string{http3.NextProtoH3}
-		conn, err := quic.DialAddr(
-			context.Background(),
-			fmt.Sprintf("localhost:%d", port),
-			tlsConf,
-			getQuicConfig(nil),
-		)
-		Expect(err).ToNot(HaveOccurred())
-		defer conn.CloseWithError(0, "")
-		rt := http3.SingleDestinationRoundTripper{Connection: conn}
-		str, err := rt.OpenRequestStream(context.Background())
-		Expect(err).ToNot(HaveOccurred())
-		Expect(str.SendRequestHeader(req)).To(Succeed())
-		// make sure the request is received (and not stuck in some buffer, for example)
-		Eventually(handlerCalled).Should(BeClosed())
-
-		rsp, err := str.ReadResponse()
+		rsp, err := client.Transport.(*http3.RoundTripper).RoundTripOpt(req, http3.RoundTripOpt{DontCloseRequestStream: true})
 		Expect(err).ToNot(HaveOccurred())
 		Expect(rsp.StatusCode).To(Equal(200))
 
+		str := rsp.Body.(http3.HTTPStreamer).HTTPStream()
 		b := make([]byte, 6)
 		_, err = io.ReadFull(str, b)
 		Expect(err).ToNot(HaveOccurred())
@@ -509,10 +445,10 @@ var _ = Describe("HTTP tests", func() {
 		Expect(repl).To(Equal(data))
 	})
 
-	It("serves QUIC connections", func() {
+	It("serves other QUIC connections", func() {
 		tlsConf := getTLSConfig()
 		tlsConf.NextProtos = []string{http3.NextProtoH3}
-		ln, err := quic.ListenAddr("localhost:0", tlsConf, getQuicConfig(nil))
+		ln, err := quic.ListenAddr("localhost:0", tlsConf, nil)
 		Expect(err).ToNot(HaveOccurred())
 		defer ln.Close()
 		done := make(chan struct{})
@@ -521,7 +457,7 @@ var _ = Describe("HTTP tests", func() {
 			defer close(done)
 			conn, err := ln.Accept(context.Background())
 			Expect(err).ToNot(HaveOccurred())
-			server.ServeQUICConn(conn) // returns once the client closes
+			Expect(server.ServeQUICConn(conn)).To(Succeed())
 		}()
 
 		resp, err := client.Get(fmt.Sprintf("https://localhost:%d/hello", ln.Addr().(*net.UDPAddr).Port))
@@ -595,7 +531,6 @@ var _ = Describe("HTTP tests", func() {
 
 	It("sets conn context", func() {
 		type ctxKey int
-		var tracingID quic.ConnectionTracingID
 		server.ConnContext = func(ctx context.Context, c quic.Connection) context.Context {
 			serv, ok := ctx.Value(http3.ServerContextKey).(*http3.Server)
 			Expect(ok).To(BeTrue())
@@ -603,10 +538,9 @@ var _ = Describe("HTTP tests", func() {
 
 			ctx = context.WithValue(ctx, ctxKey(0), "Hello")
 			ctx = context.WithValue(ctx, ctxKey(1), c)
-			tracingID = c.Context().Value(quic.ConnectionTracingKey).(quic.ConnectionTracingID)
 			return ctx
 		}
-		mux.HandleFunc("/http3-conn-context", func(w http.ResponseWriter, r *http.Request) {
+		mux.HandleFunc("/conn-context", func(w http.ResponseWriter, r *http.Request) {
 			defer GinkgoRecover()
 			v, ok := r.Context().Value(ctxKey(0)).(string)
 			Expect(ok).To(BeTrue())
@@ -619,453 +553,10 @@ var _ = Describe("HTTP tests", func() {
 			serv, ok := r.Context().Value(http3.ServerContextKey).(*http3.Server)
 			Expect(ok).To(BeTrue())
 			Expect(serv).To(Equal(server))
-
-			id, ok := r.Context().Value(quic.ConnectionTracingKey).(quic.ConnectionTracingID)
-			Expect(ok).To(BeTrue())
-			Expect(id).To(Equal(tracingID))
 		})
 
-		resp, err := client.Get(fmt.Sprintf("https://localhost:%d/http3-conn-context", port))
-		Expect(err).ToNot(HaveOccurred())
-		Expect(resp.StatusCode).To(Equal(http.StatusOK))
-	})
-
-	It("uses the QUIC connection context", func() {
-		conn, err := net.ListenUDP("udp", &net.UDPAddr{IP: net.IPv4(127, 0, 0, 1), Port: 0})
-		Expect(err).ToNot(HaveOccurred())
-		defer conn.Close()
-		tr := &quic.Transport{
-			Conn: conn,
-			ConnContext: func(ctx context.Context) context.Context {
-				//nolint:staticcheck
-				return context.WithValue(ctx, "foo", "bar")
-			},
-		}
-		defer tr.Close()
-		tlsConf := getTLSConfig()
-		tlsConf.NextProtos = []string{http3.NextProtoH3}
-		ln, err := tr.Listen(tlsConf, getQuicConfig(nil))
-		Expect(err).ToNot(HaveOccurred())
-		defer ln.Close()
-
-		mux.HandleFunc("/quic-conn-context", func(w http.ResponseWriter, r *http.Request) {
-			defer GinkgoRecover()
-			v, ok := r.Context().Value("foo").(string)
-			Expect(ok).To(BeTrue())
-			Expect(v).To(Equal("bar"))
-		})
-		go func() {
-			defer GinkgoRecover()
-			c, err := ln.Accept(context.Background())
-			Expect(err).ToNot(HaveOccurred())
-			server.ServeQUICConn(c)
-		}()
-
-		resp, err := client.Get(fmt.Sprintf("https://localhost:%d/quic-conn-context", conn.LocalAddr().(*net.UDPAddr).Port))
-		Expect(err).ToNot(HaveOccurred())
-		Expect(resp.StatusCode).To(Equal(http.StatusOK))
-	})
-
-	It("checks the server's settings", func() {
-		tlsConf := tlsClientConfigWithoutServerName.Clone()
-		tlsConf.NextProtos = []string{http3.NextProtoH3}
-		conn, err := quic.DialAddr(
-			context.Background(),
-			fmt.Sprintf("localhost:%d", port),
-			tlsConf,
-			getQuicConfig(nil),
-		)
-		Expect(err).ToNot(HaveOccurred())
-		defer conn.CloseWithError(0, "")
-		rt := http3.SingleDestinationRoundTripper{Connection: conn}
-		hconn := rt.Start()
-		Eventually(hconn.ReceivedSettings(), 5*time.Second, 10*time.Millisecond).Should(BeClosed())
-		settings := hconn.Settings()
-		Expect(settings.EnableExtendedConnect).To(BeTrue())
-		Expect(settings.EnableDatagrams).To(BeFalse())
-		Expect(settings.Other).To(BeEmpty())
-	})
-
-	It("receives the client's settings", func() {
-		settingsChan := make(chan *http3.Settings, 1)
-		mux.HandleFunc("/settings", func(w http.ResponseWriter, r *http.Request) {
-			defer GinkgoRecover()
-			conn := w.(http3.Hijacker).Connection()
-			Eventually(conn.ReceivedSettings(), 5*time.Second, 10*time.Millisecond).Should(BeClosed())
-			settingsChan <- conn.Settings()
-			w.WriteHeader(http.StatusOK)
-		})
-
-		rt = &http3.RoundTripper{
-			TLSClientConfig: getTLSClientConfigWithoutServerName(),
-			QUICConfig: getQuicConfig(&quic.Config{
-				MaxIdleTimeout:  10 * time.Second,
-				EnableDatagrams: true,
-			}),
-			EnableDatagrams:    true,
-			AdditionalSettings: map[uint64]uint64{1337: 42},
-		}
-		req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("https://localhost:%d/settings", port), nil)
-		Expect(err).ToNot(HaveOccurred())
-
-		_, err = rt.RoundTrip(req)
-		Expect(err).ToNot(HaveOccurred())
-		var settings *http3.Settings
-		Expect(settingsChan).To(Receive(&settings))
-		Expect(settings).ToNot(BeNil())
-		Expect(settings.EnableDatagrams).To(BeTrue())
-		Expect(settings.EnableExtendedConnect).To(BeFalse())
-		Expect(settings.Other).To(HaveKeyWithValue(uint64(1337), uint64(42)))
-	})
-
-	It("processes 1xx response", func() {
-		header1 := "</style.css>; rel=preload; as=style"
-		header2 := "</script.js>; rel=preload; as=script"
-		data := "1xx-test-data"
-		mux.HandleFunc("/103-early-data", func(w http.ResponseWriter, r *http.Request) {
-			defer GinkgoRecover()
-			w.Header().Add("Link", header1)
-			w.Header().Add("Link", header2)
-			w.WriteHeader(http.StatusEarlyHints)
-			n, err := w.Write([]byte(data))
-			Expect(err).NotTo(HaveOccurred())
-			Expect(n).To(Equal(len(data)))
-			w.WriteHeader(http.StatusOK)
-		})
-
-		var (
-			cnt    int
-			status int
-			hdr    textproto.MIMEHeader
-		)
-		ctx := httptrace.WithClientTrace(context.Background(), &httptrace.ClientTrace{
-			Got1xxResponse: func(code int, header textproto.MIMEHeader) error {
-				hdr = header
-				status = code
-				cnt++
-				return nil
-			},
-		})
-
-		req, err := http.NewRequestWithContext(ctx, http.MethodGet, fmt.Sprintf("https://localhost:%d/103-early-data", port), nil)
-		Expect(err).ToNot(HaveOccurred())
-		resp, err := client.Do(req)
-		Expect(err).ToNot(HaveOccurred())
-		Expect(resp.StatusCode).To(Equal(http.StatusOK))
-		body, err := io.ReadAll(resp.Body)
-		Expect(err).ToNot(HaveOccurred())
-		Expect(string(body)).To(Equal(data))
-		Expect(status).To(Equal(http.StatusEarlyHints))
-		Expect(hdr).To(HaveKeyWithValue("Link", []string{header1, header2}))
-		Expect(cnt).To(Equal(1))
-		Expect(resp.Header).To(HaveKeyWithValue("Link", []string{header1, header2}))
-		Expect(resp.Body.Close()).To(Succeed())
-	})
-
-	It("processes 1xx terminal response", func() {
-		mux.HandleFunc("/101-switch-protocols", func(w http.ResponseWriter, r *http.Request) {
-			defer GinkgoRecover()
-			w.Header().Add("foo", "bar")
-			w.WriteHeader(http.StatusSwitchingProtocols)
-		})
-
-		var (
-			cnt    int
-			status int
-		)
-		ctx := httptrace.WithClientTrace(context.Background(), &httptrace.ClientTrace{
-			Got1xxResponse: func(code int, header textproto.MIMEHeader) error {
-				status = code
-				cnt++
-				return nil
-			},
-		})
-
-		req, err := http.NewRequestWithContext(ctx, http.MethodGet, fmt.Sprintf("https://localhost:%d/101-switch-protocols", port), nil)
-		Expect(err).ToNot(HaveOccurred())
-		resp, err := client.Do(req)
-		Expect(err).ToNot(HaveOccurred())
-		Expect(resp.StatusCode).To(Equal(http.StatusSwitchingProtocols))
-		Expect(resp.Header).To(HaveKeyWithValue("Foo", []string{"bar"}))
-		Expect(status).To(Equal(0))
-		Expect(cnt).To(Equal(0))
-	})
-
-	Context("HTTP datagrams", func() {
-		openDatagramStream := func(h string) (_ http3.RequestStream, closeFn func()) {
-			tlsConf := getTLSClientConfigWithoutServerName()
-			tlsConf.NextProtos = []string{http3.NextProtoH3}
-			conn, err := quic.DialAddr(
-				context.Background(),
-				fmt.Sprintf("localhost:%d", port),
-				tlsConf,
-				getQuicConfig(&quic.Config{EnableDatagrams: true}),
-			)
-			Expect(err).ToNot(HaveOccurred())
-
-			rt := &http3.SingleDestinationRoundTripper{
-				Connection:      conn,
-				EnableDatagrams: true,
-			}
-			str, err := rt.OpenRequestStream(context.Background())
-			Expect(err).ToNot(HaveOccurred())
-			u, err := url.Parse(h)
-			Expect(err).ToNot(HaveOccurred())
-			req := &http.Request{
-				Method: http.MethodConnect,
-				Proto:  "datagrams",
-				Host:   u.Host,
-				URL:    u,
-			}
-			Expect(str.SendRequestHeader(req)).To(Succeed())
-
-			rsp, err := str.ReadResponse()
-			Expect(err).ToNot(HaveOccurred())
-			Expect(rsp.StatusCode).To(Equal(http.StatusOK))
-			return str, func() { conn.CloseWithError(0, "") }
-		}
-
-		It("sends an receives HTTP datagrams", func() {
-			errChan := make(chan error, 1)
-			const num = 5
-			datagramChan := make(chan struct{}, num)
-			mux.HandleFunc("/datagrams", func(w http.ResponseWriter, r *http.Request) {
-				defer GinkgoRecover()
-				Expect(r.Method).To(Equal(http.MethodConnect))
-				conn := w.(http3.Hijacker).Connection()
-				Eventually(conn.ReceivedSettings()).Should(BeClosed())
-				Expect(conn.Settings().EnableDatagrams).To(BeTrue())
-				w.WriteHeader(http.StatusOK)
-
-				str := w.(http3.HTTPStreamer).HTTPStream()
-				go str.Read([]byte{0}) // need to continue reading from stream to observe state transitions
-
-				for {
-					if _, err := str.ReceiveDatagram(context.Background()); err != nil {
-						errChan <- err
-						return
-					}
-					datagramChan <- struct{}{}
-				}
-			})
-
-			str, closeFn := openDatagramStream(fmt.Sprintf("https://localhost:%d/datagrams", port))
-			defer closeFn()
-
-			for i := 0; i < num; i++ {
-				b := make([]byte, 8)
-				binary.BigEndian.PutUint64(b, uint64(i))
-				Expect(str.SendDatagram(bytes.Repeat(b, 100))).To(Succeed())
-			}
-			var count int
-		loop:
-			for {
-				select {
-				case <-datagramChan:
-					count++
-					if count >= num*4/5 {
-						break loop
-					}
-				case err := <-errChan:
-					Fail(fmt.Sprintf("receiving datagrams failed: %s", err))
-				}
-			}
-			str.CancelWrite(42)
-
-			var resetErr error
-			Eventually(errChan).Should(Receive(&resetErr))
-			Expect(resetErr.(*quic.StreamError).ErrorCode).To(BeEquivalentTo(42))
-		})
-
-		It("closes the send direction", func() {
-			errChan := make(chan error, 1)
-			datagramChan := make(chan []byte, 1)
-			mux.HandleFunc("/datagrams", func(w http.ResponseWriter, r *http.Request) {
-				defer GinkgoRecover()
-				conn := w.(http3.Hijacker).Connection()
-				Eventually(conn.ReceivedSettings()).Should(BeClosed())
-				Expect(conn.Settings().EnableDatagrams).To(BeTrue())
-				w.WriteHeader(http.StatusOK)
-
-				str := w.(http3.HTTPStreamer).HTTPStream()
-				go str.Read([]byte{0}) // need to continue reading from stream to observe state transitions
-
-				for {
-					data, err := str.ReceiveDatagram(context.Background())
-					if err != nil {
-						errChan <- err
-						return
-					}
-					datagramChan <- data
-				}
-			})
-
-			str, closeFn := openDatagramStream(fmt.Sprintf("https://localhost:%d/datagrams", port))
-			defer closeFn()
-			go str.Read([]byte{0})
-
-			Expect(str.SendDatagram([]byte("foo"))).To(Succeed())
-			Eventually(datagramChan).Should(Receive(Equal([]byte("foo"))))
-			// signal that we're done sending
-			str.Close()
-
-			var resetErr error
-			Eventually(errChan).Should(Receive(&resetErr))
-			Expect(resetErr).To(Equal(io.EOF))
-
-			// make sure we can't send anymore
-			Expect(str.SendDatagram([]byte("foo"))).ToNot(Succeed())
-		})
-
-		It("detecting a stream reset from the server", func() {
-			errChan := make(chan error, 1)
-			datagramChan := make(chan []byte, 1)
-			mux.HandleFunc("/datagrams", func(w http.ResponseWriter, r *http.Request) {
-				defer GinkgoRecover()
-				conn := w.(http3.Hijacker).Connection()
-				Eventually(conn.ReceivedSettings()).Should(BeClosed())
-				Expect(conn.Settings().EnableDatagrams).To(BeTrue())
-				w.WriteHeader(http.StatusOK)
-
-				str := w.(http3.HTTPStreamer).HTTPStream()
-				go str.Read([]byte{0}) // need to continue reading from stream to observe state transitions
-
-				for {
-					data, err := str.ReceiveDatagram(context.Background())
-					if err != nil {
-						errChan <- err
-						return
-					}
-					str.CancelRead(42)
-					datagramChan <- data
-				}
-			})
-
-			str, closeFn := openDatagramStream(fmt.Sprintf("https://localhost:%d/datagrams", port))
-			defer closeFn()
-			go str.Read([]byte{0})
-
-			Expect(str.SendDatagram([]byte("foo"))).To(Succeed())
-			Eventually(datagramChan).Should(Receive(Equal([]byte("foo"))))
-			// signal that we're done sending
-
-			var resetErr error
-			Eventually(errChan).Should(Receive(&resetErr))
-			Expect(resetErr).To(Equal(&quic.StreamError{ErrorCode: 42, Remote: false}))
-
-			// make sure we can't send anymore
-			Expect(str.SendDatagram([]byte("foo"))).To(Equal(&quic.StreamError{ErrorCode: 42, Remote: true}))
-		})
-	})
-
-	Context("0-RTT", func() {
-		runCountingProxy := func(serverPort int, rtt time.Duration) (*quicproxy.QuicProxy, *atomic.Uint32) {
-			var num0RTTPackets atomic.Uint32
-			proxy, err := quicproxy.NewQuicProxy("localhost:0", &quicproxy.Opts{
-				RemoteAddr: fmt.Sprintf("localhost:%d", serverPort),
-				DelayPacket: func(_ quicproxy.Direction, data []byte) time.Duration {
-					if contains0RTTPacket(data) {
-						num0RTTPackets.Add(1)
-					}
-					return rtt / 2
-				},
-			})
-			Expect(err).ToNot(HaveOccurred())
-			return proxy, &num0RTTPackets
-		}
-
-		It("sends 0-RTT GET requests", func() {
-			proxy, num0RTTPackets := runCountingProxy(port, scaleDuration(50*time.Millisecond))
-			defer proxy.Close()
-
-			tlsConf := getTLSClientConfigWithoutServerName()
-			puts := make(chan string, 10)
-			tlsConf.ClientSessionCache = newClientSessionCache(tls.NewLRUClientSessionCache(10), nil, puts)
-			rt := &http3.RoundTripper{
-				TLSClientConfig: tlsConf,
-				QUICConfig: getQuicConfig(&quic.Config{
-					MaxIdleTimeout: 10 * time.Second,
-				}),
-				DisableCompression: true,
-			}
-			defer rt.Close()
-
-			mux.HandleFunc("/0rtt", func(w http.ResponseWriter, r *http.Request) {
-				w.Write([]byte(strconv.FormatBool(!r.TLS.HandshakeComplete)))
-			})
-			req, err := http.NewRequest(http3.MethodGet0RTT, fmt.Sprintf("https://localhost:%d/0rtt", proxy.LocalPort()), nil)
-			Expect(err).ToNot(HaveOccurred())
-			rsp, err := rt.RoundTrip(req)
-			Expect(err).ToNot(HaveOccurred())
-			Expect(rsp.StatusCode).To(BeEquivalentTo(200))
-			data, err := io.ReadAll(rsp.Body)
-			Expect(err).ToNot(HaveOccurred())
-			Expect(string(data)).To(Equal("false"))
-			Expect(num0RTTPackets.Load()).To(BeZero())
-			Eventually(puts).Should(Receive())
-
-			rt2 := &http3.RoundTripper{
-				TLSClientConfig:    rt.TLSClientConfig,
-				QUICConfig:         rt.QUICConfig,
-				DisableCompression: true,
-			}
-			defer rt2.Close()
-			rsp, err = rt2.RoundTrip(req)
-			Expect(err).ToNot(HaveOccurred())
-			Expect(rsp.StatusCode).To(BeEquivalentTo(200))
-			data, err = io.ReadAll(rsp.Body)
-			Expect(err).ToNot(HaveOccurred())
-			Expect(string(data)).To(Equal("true"))
-			Expect(num0RTTPackets.Load()).To(BeNumerically(">", 0))
-		})
-	})
-
-	It("sends and receives trailers", func() {
-		mux.HandleFunc("/trailers", func(w http.ResponseWriter, r *http.Request) {
-			defer GinkgoRecover()
-			w.Header().Set("Trailer", "AtEnd1, AtEnd2")
-			w.Header().Add("Trailer", "Never")
-			w.Header().Add("Trailer", "LAST")
-			w.Header().Set("Content-Type", "text/plain; charset=utf-8") // normal header
-			w.WriteHeader(http.StatusOK)
-			w.Header().Set("AtEnd1", "value 1")
-			io.WriteString(w, "This HTTP response has both headers before this text and trailers at the end.\n")
-			w.(http.Flusher).Flush()
-			w.Header().Set("AtEnd2", "value 2")
-			io.WriteString(w, "More text\n")
-			w.(http.Flusher).Flush()
-			w.Header().Set("LAST", "value 3")
-			w.Header().Set(http.TrailerPrefix+"Unannounced", "Surprise!")
-			w.Header().Set("Late-Header", "No surprise!")
-		})
-
-		resp, err := client.Get(fmt.Sprintf("https://localhost:%d/trailers", port))
+		resp, err := client.Get(fmt.Sprintf("https://localhost:%d/conn-context", port))
 		Expect(err).ToNot(HaveOccurred())
 		Expect(resp.StatusCode).To(Equal(200))
-		Expect(resp.Header.Get("Trailer")).To(Equal(""))
-		Expect(resp.Header).To(Not(HaveKey("Atend1")))
-		Expect(resp.Header).To(Not(HaveKey("Atend2")))
-		Expect(resp.Header).To(Not(HaveKey("Never")))
-		Expect(resp.Header).To(Not(HaveKey("Last")))
-		Expect(resp.Header).To(Not(HaveKey("Late-Header")))
-		Expect(resp.Trailer).To(Equal(http.Header(map[string][]string{
-			"Atend1": nil,
-			"Atend2": nil,
-			"Never":  nil,
-			"Last":   nil,
-		})))
-
-		body, err := io.ReadAll(gbytes.TimeoutReader(resp.Body, 3*time.Second))
-		Expect(err).ToNot(HaveOccurred())
-		Expect(string(body)).To(Equal("This HTTP response has both headers before this text and trailers at the end.\nMore text\n"))
-		for k := range resp.Header {
-			Expect(k).To(Not(HavePrefix(http.TrailerPrefix)))
-		}
-		Expect(resp.Trailer).To(Equal(http.Header(map[string][]string{
-			"Atend1":      {"value 1"},
-			"Atend2":      {"value 2"},
-			"Last":        {"value 3"},
-			"Unannounced": {"Surprise!"},
-		})))
 	})
 })

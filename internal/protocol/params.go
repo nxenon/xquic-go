@@ -3,13 +3,16 @@ package protocol
 import "time"
 
 // DesiredReceiveBufferSize is the kernel UDP receive buffer size that we'd like to use.
-const DesiredReceiveBufferSize = (1 << 20) * 7 // 7 MB
+const DesiredReceiveBufferSize = (1 << 20) * 2 // 2 MB
 
 // DesiredSendBufferSize is the kernel UDP send buffer size that we'd like to use.
-const DesiredSendBufferSize = (1 << 20) * 7 // 7 MB
+const DesiredSendBufferSize = (1 << 20) * 2 // 2 MB
 
-// InitialPacketSize is the initial (before Path MTU discovery) maximum packet size used.
-const InitialPacketSize = 1280
+// InitialPacketSizeIPv4 is the maximum packet size that we use for sending IPv4 packets.
+const InitialPacketSizeIPv4 = 1252
+
+// InitialPacketSizeIPv6 is the maximum packet size that we use for sending IPv6 packets.
+const InitialPacketSizeIPv6 = 1232
 
 // MaxCongestionWindowPackets is the maximum congestion window in packet.
 const MaxCongestionWindowPackets = 10000

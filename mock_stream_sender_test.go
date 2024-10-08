@@ -5,7 +5,6 @@
 //
 //	mockgen -typed -build_flags=-tags=gomock -package quic -self_package github.com/quic-go/quic-go -destination mock_stream_sender_test.go github.com/quic-go/quic-go StreamSender
 //
-
 // Package quic is a generated GoMock package.
 package quic
 
@@ -13,6 +12,7 @@ import (
 	reflect "reflect"
 
 	protocol "github.com/quic-go/quic-go/internal/protocol"
+	wire "github.com/quic-go/quic-go/internal/wire"
 	gomock "go.uber.org/mock/gomock"
 )
 
@@ -39,74 +39,38 @@ func (m *MockStreamSender) EXPECT() *MockStreamSenderMockRecorder {
 	return m.recorder
 }
 
-// onHasStreamControlFrame mocks base method.
-func (m *MockStreamSender) onHasStreamControlFrame(arg0 protocol.StreamID, arg1 streamControlFrameGetter) {
-	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "onHasStreamControlFrame", arg0, arg1)
-}
-
-// onHasStreamControlFrame indicates an expected call of onHasStreamControlFrame.
-func (mr *MockStreamSenderMockRecorder) onHasStreamControlFrame(arg0, arg1 any) *MockStreamSenderonHasStreamControlFrameCall {
-	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "onHasStreamControlFrame", reflect.TypeOf((*MockStreamSender)(nil).onHasStreamControlFrame), arg0, arg1)
-	return &MockStreamSenderonHasStreamControlFrameCall{Call: call}
-}
-
-// MockStreamSenderonHasStreamControlFrameCall wrap *gomock.Call
-type MockStreamSenderonHasStreamControlFrameCall struct {
-	*gomock.Call
-}
-
-// Return rewrite *gomock.Call.Return
-func (c *MockStreamSenderonHasStreamControlFrameCall) Return() *MockStreamSenderonHasStreamControlFrameCall {
-	c.Call = c.Call.Return()
-	return c
-}
-
-// Do rewrite *gomock.Call.Do
-func (c *MockStreamSenderonHasStreamControlFrameCall) Do(f func(protocol.StreamID, streamControlFrameGetter)) *MockStreamSenderonHasStreamControlFrameCall {
-	c.Call = c.Call.Do(f)
-	return c
-}
-
-// DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockStreamSenderonHasStreamControlFrameCall) DoAndReturn(f func(protocol.StreamID, streamControlFrameGetter)) *MockStreamSenderonHasStreamControlFrameCall {
-	c.Call = c.Call.DoAndReturn(f)
-	return c
-}
-
 // onHasStreamData mocks base method.
-func (m *MockStreamSender) onHasStreamData(arg0 protocol.StreamID, arg1 sendStreamI) {
+func (m *MockStreamSender) onHasStreamData(arg0 protocol.StreamID) {
 	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "onHasStreamData", arg0, arg1)
+	m.ctrl.Call(m, "onHasStreamData", arg0)
 }
 
 // onHasStreamData indicates an expected call of onHasStreamData.
-func (mr *MockStreamSenderMockRecorder) onHasStreamData(arg0, arg1 any) *MockStreamSenderonHasStreamDataCall {
+func (mr *MockStreamSenderMockRecorder) onHasStreamData(arg0 any) *StreamSenderonHasStreamDataCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "onHasStreamData", reflect.TypeOf((*MockStreamSender)(nil).onHasStreamData), arg0, arg1)
-	return &MockStreamSenderonHasStreamDataCall{Call: call}
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "onHasStreamData", reflect.TypeOf((*MockStreamSender)(nil).onHasStreamData), arg0)
+	return &StreamSenderonHasStreamDataCall{Call: call}
 }
 
-// MockStreamSenderonHasStreamDataCall wrap *gomock.Call
-type MockStreamSenderonHasStreamDataCall struct {
+// StreamSenderonHasStreamDataCall wrap *gomock.Call
+type StreamSenderonHasStreamDataCall struct {
 	*gomock.Call
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *MockStreamSenderonHasStreamDataCall) Return() *MockStreamSenderonHasStreamDataCall {
+func (c *StreamSenderonHasStreamDataCall) Return() *StreamSenderonHasStreamDataCall {
 	c.Call = c.Call.Return()
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockStreamSenderonHasStreamDataCall) Do(f func(protocol.StreamID, sendStreamI)) *MockStreamSenderonHasStreamDataCall {
+func (c *StreamSenderonHasStreamDataCall) Do(f func(protocol.StreamID)) *StreamSenderonHasStreamDataCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockStreamSenderonHasStreamDataCall) DoAndReturn(f func(protocol.StreamID, sendStreamI)) *MockStreamSenderonHasStreamDataCall {
+func (c *StreamSenderonHasStreamDataCall) DoAndReturn(f func(protocol.StreamID)) *StreamSenderonHasStreamDataCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
@@ -118,31 +82,67 @@ func (m *MockStreamSender) onStreamCompleted(arg0 protocol.StreamID) {
 }
 
 // onStreamCompleted indicates an expected call of onStreamCompleted.
-func (mr *MockStreamSenderMockRecorder) onStreamCompleted(arg0 any) *MockStreamSenderonStreamCompletedCall {
+func (mr *MockStreamSenderMockRecorder) onStreamCompleted(arg0 any) *StreamSenderonStreamCompletedCall {
 	mr.mock.ctrl.T.Helper()
 	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "onStreamCompleted", reflect.TypeOf((*MockStreamSender)(nil).onStreamCompleted), arg0)
-	return &MockStreamSenderonStreamCompletedCall{Call: call}
+	return &StreamSenderonStreamCompletedCall{Call: call}
 }
 
-// MockStreamSenderonStreamCompletedCall wrap *gomock.Call
-type MockStreamSenderonStreamCompletedCall struct {
+// StreamSenderonStreamCompletedCall wrap *gomock.Call
+type StreamSenderonStreamCompletedCall struct {
 	*gomock.Call
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *MockStreamSenderonStreamCompletedCall) Return() *MockStreamSenderonStreamCompletedCall {
+func (c *StreamSenderonStreamCompletedCall) Return() *StreamSenderonStreamCompletedCall {
 	c.Call = c.Call.Return()
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockStreamSenderonStreamCompletedCall) Do(f func(protocol.StreamID)) *MockStreamSenderonStreamCompletedCall {
+func (c *StreamSenderonStreamCompletedCall) Do(f func(protocol.StreamID)) *StreamSenderonStreamCompletedCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockStreamSenderonStreamCompletedCall) DoAndReturn(f func(protocol.StreamID)) *MockStreamSenderonStreamCompletedCall {
+func (c *StreamSenderonStreamCompletedCall) DoAndReturn(f func(protocol.StreamID)) *StreamSenderonStreamCompletedCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
+
+// queueControlFrame mocks base method.
+func (m *MockStreamSender) queueControlFrame(arg0 wire.Frame) {
+	m.ctrl.T.Helper()
+	m.ctrl.Call(m, "queueControlFrame", arg0)
+}
+
+// queueControlFrame indicates an expected call of queueControlFrame.
+func (mr *MockStreamSenderMockRecorder) queueControlFrame(arg0 any) *StreamSenderqueueControlFrameCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "queueControlFrame", reflect.TypeOf((*MockStreamSender)(nil).queueControlFrame), arg0)
+	return &StreamSenderqueueControlFrameCall{Call: call}
+}
+
+// StreamSenderqueueControlFrameCall wrap *gomock.Call
+type StreamSenderqueueControlFrameCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *StreamSenderqueueControlFrameCall) Return() *StreamSenderqueueControlFrameCall {
+	c.Call = c.Call.Return()
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *StreamSenderqueueControlFrameCall) Do(f func(wire.Frame)) *StreamSenderqueueControlFrameCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *StreamSenderqueueControlFrameCall) DoAndReturn(f func(wire.Frame)) *StreamSenderqueueControlFrameCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }

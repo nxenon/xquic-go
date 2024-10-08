@@ -74,7 +74,6 @@ var _ = Describe("Multiplexing", func() {
 			Expect(err).ToNot(HaveOccurred())
 			defer conn.Close()
 			tr := &quic.Transport{Conn: conn}
-			addTracer(tr)
 
 			done1 := make(chan struct{})
 			done2 := make(chan struct{})
@@ -110,7 +109,6 @@ var _ = Describe("Multiplexing", func() {
 			Expect(err).ToNot(HaveOccurred())
 			defer conn.Close()
 			tr := &quic.Transport{Conn: conn}
-			addTracer(tr)
 
 			done1 := make(chan struct{})
 			done2 := make(chan struct{})
@@ -141,7 +139,6 @@ var _ = Describe("Multiplexing", func() {
 			Expect(err).ToNot(HaveOccurred())
 			defer conn.Close()
 			tr := &quic.Transport{Conn: conn}
-			addTracer(tr)
 			server, err := tr.Listen(
 				getTLSConfig(),
 				getQuicConfig(nil),
@@ -170,7 +167,6 @@ var _ = Describe("Multiplexing", func() {
 				Expect(err).ToNot(HaveOccurred())
 				defer conn1.Close()
 				tr1 := &quic.Transport{Conn: conn1}
-				addTracer(tr1)
 
 				addr2, err := net.ResolveUDPAddr("udp", "localhost:0")
 				Expect(err).ToNot(HaveOccurred())
@@ -178,7 +174,6 @@ var _ = Describe("Multiplexing", func() {
 				Expect(err).ToNot(HaveOccurred())
 				defer conn2.Close()
 				tr2 := &quic.Transport{Conn: conn2}
-				addTracer(tr2)
 
 				server1, err := tr1.Listen(
 					getTLSConfig(),
@@ -225,7 +220,6 @@ var _ = Describe("Multiplexing", func() {
 		Expect(err).ToNot(HaveOccurred())
 		defer conn1.Close()
 		tr1 := &quic.Transport{Conn: conn1}
-		addTracer(tr1)
 
 		addr2, err := net.ResolveUDPAddr("udp", "localhost:0")
 		Expect(err).ToNot(HaveOccurred())
@@ -233,7 +227,6 @@ var _ = Describe("Multiplexing", func() {
 		Expect(err).ToNot(HaveOccurred())
 		defer conn2.Close()
 		tr2 := &quic.Transport{Conn: conn2}
-		addTracer(tr2)
 
 		server, err := tr1.Listen(getTLSConfig(), getQuicConfig(nil))
 		Expect(err).ToNot(HaveOccurred())
@@ -249,7 +242,6 @@ var _ = Describe("Multiplexing", func() {
 			defer GinkgoRecover()
 			ticker := time.NewTicker(time.Millisecond / 10)
 			defer ticker.Stop()
-			var wroteFirstPacket bool
 			for {
 				select {
 				case <-ticker.C:
@@ -259,18 +251,11 @@ var _ = Describe("Multiplexing", func() {
 				b := make([]byte, packetLen)
 				rand.Read(b[1:]) // keep the first byte set to 0, so it's not classified as a QUIC packet
 				_, err := tr1.WriteTo(b, tr2.Conn.LocalAddr())
-				// The first sendmsg call on a new UDP socket sometimes errors on Linux.
-				// It's not clear why this happens.
-				// See https://github.com/golang/go/issues/63322.
-				if err != nil && !wroteFirstPacket && isPermissionError(err) {
-					_, err = tr1.WriteTo(b, tr2.Conn.LocalAddr())
-				}
 				if ctx.Err() != nil { // ctx canceled while Read was executing
 					return
 				}
 				Expect(err).ToNot(HaveOccurred())
 				sentPackets.Add(1)
-				wroteFirstPacket = true
 			}
 		}()
 

@@ -1,7 +1,6 @@
 package http3
 
 import (
-	"fmt"
 	"net/http"
 	"net/url"
 
@@ -32,17 +31,6 @@ var _ = Describe("Request", func() {
 		Expect(req.Body).To(BeNil())
 		Expect(req.Host).To(Equal("quic.clemente.io"))
 		Expect(req.RequestURI).To(Equal("/foo"))
-	})
-
-	It("sets the ContentLength to -1", func() {
-		headers := []qpack.HeaderField{
-			{Name: ":path", Value: "/foo"},
-			{Name: ":authority", Value: "quic.clemente.io"},
-			{Name: ":method", Value: "GET"},
-		}
-		req, err := requestFromHeaders(headers)
-		Expect(err).ToNot(HaveOccurred())
-		Expect(req.ContentLength).To(BeEquivalentTo(-1))
 	})
 
 	It("rejects upper-case fields", func() {
@@ -224,17 +212,6 @@ var _ = Describe("Request", func() {
 		Expect(err).To(MatchError(":path, :authority and :method must not be empty"))
 	})
 
-	It("errors with invalid protocol", func() {
-		headers := []qpack.HeaderField{
-			{Name: ":path", Value: "/foo"},
-			{Name: ":authority", Value: "quic.clemente.io"},
-			{Name: ":method", Value: "GET"},
-			{Name: ":protocol", Value: "connect-udp"},
-		}
-		_, err := requestFromHeaders(headers)
-		Expect(err).To(MatchError(":protocol must be empty"))
-	})
-
 	Context("regular HTTP CONNECT", func() {
 		It("handles CONNECT method", func() {
 			headers := []qpack.HeaderField{
@@ -244,7 +221,6 @@ var _ = Describe("Request", func() {
 			req, err := requestFromHeaders(headers)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(req.Method).To(Equal(http.MethodConnect))
-			Expect(req.Proto).To(Equal("HTTP/3.0"))
 			Expect(req.RequestURI).To(Equal("quic.clemente.io"))
 		})
 
@@ -305,12 +281,21 @@ var _ = Describe("Request", func() {
 			Expect(err).ToNot(HaveOccurred())
 		})
 
-		It("uses URL.Host", func() {
-			Expect(hostnameFromURL(url)).To(Equal("quic.clemente.io:1337"))
+		It("uses req.URL.Host", func() {
+			req := &http.Request{URL: url}
+			Expect(hostnameFromRequest(req)).To(Equal("quic.clemente.io:1337"))
+		})
+
+		It("uses req.URL.Host even if req.Host is available", func() {
+			req := &http.Request{
+				Host: "www.example.org",
+				URL:  url,
+			}
+			Expect(hostnameFromRequest(req)).To(Equal("quic.clemente.io:1337"))
 		})
 
 		It("returns an empty hostname if nothing is set", func() {
-			Expect(hostnameFromURL(nil)).To(BeEmpty())
+			Expect(hostnameFromRequest(&http.Request{})).To(BeEmpty())
 		})
 	})
 })
@@ -321,8 +306,7 @@ var _ = Describe("Response", func() {
 			{Name: ":status", Value: "200"},
 			{Name: "content-length", Value: "42"},
 		}
-		rsp := &http.Response{}
-		err := updateResponseFromHeaders(rsp, headers)
+		rsp, err := responseFromHeaders(headers)
 		Expect(err).NotTo(HaveOccurred())
 		Expect(rsp.Proto).To(Equal("HTTP/3.0"))
 		Expect(rsp.ProtoMajor).To(Equal(3))
@@ -335,29 +319,12 @@ var _ = Describe("Response", func() {
 		Expect(rsp.Status).To(Equal("200 OK"))
 	})
 
-	It("parses trailer", func() {
-		headers := []qpack.HeaderField{
-			{Name: ":status", Value: "200"},
-			{Name: "trailer", Value: "Trailer1, Trailer2"},
-			{Name: "trailer", Value: "TRAILER3"},
-		}
-		rsp := &http.Response{}
-		err := updateResponseFromHeaders(rsp, headers)
-		Expect(err).NotTo(HaveOccurred())
-		Expect(rsp.Header).To(HaveLen(0))
-		Expect(rsp.Trailer).To(Equal(http.Header(map[string][]string{
-			"Trailer1": nil,
-			"Trailer2": nil,
-			"Trailer3": nil,
-		})))
-	})
-
 	It("rejects pseudo header fields after regular header fields", func() {
 		headers := []qpack.HeaderField{
 			{Name: "content-length", Value: "42"},
 			{Name: ":status", Value: "200"},
 		}
-		err := updateResponseFromHeaders(&http.Response{}, headers)
+		_, err := responseFromHeaders(headers)
 		Expect(err).To(MatchError("received pseudo header :status after a regular header field"))
 	})
 
@@ -365,15 +332,16 @@ var _ = Describe("Response", func() {
 		headers := []qpack.HeaderField{
 			{Name: "content-length", Value: "42"},
 		}
-		err := updateResponseFromHeaders(&http.Response{}, headers)
+		_, err := responseFromHeaders(headers)
 		Expect(err).To(MatchError("missing status field"))
 	})
 
 	It("rejects invalid status codes", func() {
 		headers := []qpack.HeaderField{
 			{Name: ":status", Value: "foobar"},
+			{Name: "content-length", Value: "42"},
 		}
-		err := updateResponseFromHeaders(&http.Response{}, headers)
+		_, err := responseFromHeaders(headers)
 		Expect(err).To(HaveOccurred())
 		Expect(err.Error()).To(ContainSubstring("invalid status code"))
 	})
@@ -383,53 +351,7 @@ var _ = Describe("Response", func() {
 			{Name: ":status", Value: "404"},
 			{Name: ":method", Value: "GET"},
 		}
-		err := updateResponseFromHeaders(&http.Response{}, headers)
+		_, err := responseFromHeaders(headers)
 		Expect(err).To(MatchError("invalid response pseudo header: :method"))
-	})
-
-	DescribeTable("rejecting invalid header fields",
-		func(invalidField string) {
-			headers := []qpack.HeaderField{
-				{Name: ":status", Value: "404"},
-				{Name: invalidField, Value: "some-value"},
-			}
-			err := updateResponseFromHeaders(&http.Response{}, headers)
-			Expect(err).To(MatchError(fmt.Sprintf("invalid header field name: %q", invalidField)))
-		},
-		Entry("connection", "connection"),
-		Entry("keep-alive", "keep-alive"),
-		Entry("proxy-connection", "proxy-connection"),
-		Entry("transfer-encoding", "transfer-encoding"),
-		Entry("upgrade", "upgrade"),
-	)
-
-	It("rejects the TE header field, unless it is set to trailers", func() {
-		headers := []qpack.HeaderField{
-			{Name: ":status", Value: "404"},
-			{Name: "te", Value: "trailers"},
-		}
-		Expect(updateResponseFromHeaders(&http.Response{}, headers)).To(Succeed())
-		headers = []qpack.HeaderField{
-			{Name: ":status", Value: "404"},
-			{Name: "te", Value: "not-trailers"},
-		}
-		Expect(updateResponseFromHeaders(&http.Response{}, headers)).To(MatchError("invalid TE header field value: \"not-trailers\""))
-	})
-
-	It("parses trailers", func() {
-		headers := []qpack.HeaderField{
-			{Name: "content-length", Value: "42"},
-		}
-		hdr, err := parseTrailers(headers)
-		Expect(err).ToNot(HaveOccurred())
-		Expect(hdr.Get("Content-Length")).To(Equal("42"))
-	})
-
-	It("parses trailers", func() {
-		headers := []qpack.HeaderField{
-			{Name: ":status", Value: "200"},
-		}
-		_, err := parseTrailers(headers)
-		Expect(err).To(MatchError("http3: received pseudo header in trailer: :status"))
 	})
 })

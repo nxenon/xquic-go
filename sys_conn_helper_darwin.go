@@ -33,6 +33,4 @@ func parseIPv4PktInfo(body []byte) (ip netip.Addr, ifIndex uint32, ok bool) {
 	return netip.AddrFrom4(*(*[4]byte)(body[8:12])), binary.LittleEndian.Uint32(body), true
 }
 
-func isGSOEnabled(syscall.RawConn) bool { return false }
-
-func isECNEnabled() bool { return !isECNDisabledUsingEnv() }
+func isGSOSupported(syscall.RawConn) bool { return false }

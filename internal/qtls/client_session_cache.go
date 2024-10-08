@@ -1,12 +1,12 @@
+//go:build go1.21
+
 package qtls
 
 import (
 	"crypto/tls"
-	"sync"
 )
 
 type clientSessionCache struct {
-	mx      sync.Mutex
 	getData func(earlyData bool) []byte
 	setData func(data []byte, earlyData bool) (allowEarlyData bool)
 	wrapped tls.ClientSessionCache
@@ -14,10 +14,7 @@ type clientSessionCache struct {
 
 var _ tls.ClientSessionCache = &clientSessionCache{}
 
-func (c *clientSessionCache) Put(key string, cs *tls.ClientSessionState) {
-	c.mx.Lock()
-	defer c.mx.Unlock()
-
+func (c clientSessionCache) Put(key string, cs *tls.ClientSessionState) {
 	if cs == nil {
 		c.wrapped.Put(key, nil)
 		return
@@ -37,10 +34,7 @@ func (c *clientSessionCache) Put(key string, cs *tls.ClientSessionState) {
 	c.wrapped.Put(key, newCS)
 }
 
-func (c *clientSessionCache) Get(key string) (*tls.ClientSessionState, bool) {
-	c.mx.Lock()
-	defer c.mx.Unlock()
-
+func (c clientSessionCache) Get(key string) (*tls.ClientSessionState, bool) {
 	cs, ok := c.wrapped.Get(key)
 	if !ok || cs == nil {
 		return cs, ok

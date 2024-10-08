@@ -5,12 +5,10 @@
 //
 //	mockgen -typed -build_flags=-tags=gomock -package mocks -destination crypto_setup_tmp.go github.com/quic-go/quic-go/internal/handshake CryptoSetup
 //
-
 // Package mocks is a generated GoMock package.
 package mocks
 
 import (
-	context "context"
 	reflect "reflect"
 
 	handshake "github.com/quic-go/quic-go/internal/handshake"
@@ -48,31 +46,31 @@ func (m *MockCryptoSetup) ChangeConnectionID(arg0 protocol.ConnectionID) {
 }
 
 // ChangeConnectionID indicates an expected call of ChangeConnectionID.
-func (mr *MockCryptoSetupMockRecorder) ChangeConnectionID(arg0 any) *MockCryptoSetupChangeConnectionIDCall {
+func (mr *MockCryptoSetupMockRecorder) ChangeConnectionID(arg0 any) *CryptoSetupChangeConnectionIDCall {
 	mr.mock.ctrl.T.Helper()
 	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ChangeConnectionID", reflect.TypeOf((*MockCryptoSetup)(nil).ChangeConnectionID), arg0)
-	return &MockCryptoSetupChangeConnectionIDCall{Call: call}
+	return &CryptoSetupChangeConnectionIDCall{Call: call}
 }
 
-// MockCryptoSetupChangeConnectionIDCall wrap *gomock.Call
-type MockCryptoSetupChangeConnectionIDCall struct {
+// CryptoSetupChangeConnectionIDCall wrap *gomock.Call
+type CryptoSetupChangeConnectionIDCall struct {
 	*gomock.Call
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *MockCryptoSetupChangeConnectionIDCall) Return() *MockCryptoSetupChangeConnectionIDCall {
+func (c *CryptoSetupChangeConnectionIDCall) Return() *CryptoSetupChangeConnectionIDCall {
 	c.Call = c.Call.Return()
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockCryptoSetupChangeConnectionIDCall) Do(f func(protocol.ConnectionID)) *MockCryptoSetupChangeConnectionIDCall {
+func (c *CryptoSetupChangeConnectionIDCall) Do(f func(protocol.ConnectionID)) *CryptoSetupChangeConnectionIDCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockCryptoSetupChangeConnectionIDCall) DoAndReturn(f func(protocol.ConnectionID)) *MockCryptoSetupChangeConnectionIDCall {
+func (c *CryptoSetupChangeConnectionIDCall) DoAndReturn(f func(protocol.ConnectionID)) *CryptoSetupChangeConnectionIDCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
@@ -86,31 +84,31 @@ func (m *MockCryptoSetup) Close() error {
 }
 
 // Close indicates an expected call of Close.
-func (mr *MockCryptoSetupMockRecorder) Close() *MockCryptoSetupCloseCall {
+func (mr *MockCryptoSetupMockRecorder) Close() *CryptoSetupCloseCall {
 	mr.mock.ctrl.T.Helper()
 	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Close", reflect.TypeOf((*MockCryptoSetup)(nil).Close))
-	return &MockCryptoSetupCloseCall{Call: call}
+	return &CryptoSetupCloseCall{Call: call}
 }
 
-// MockCryptoSetupCloseCall wrap *gomock.Call
-type MockCryptoSetupCloseCall struct {
+// CryptoSetupCloseCall wrap *gomock.Call
+type CryptoSetupCloseCall struct {
 	*gomock.Call
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *MockCryptoSetupCloseCall) Return(arg0 error) *MockCryptoSetupCloseCall {
+func (c *CryptoSetupCloseCall) Return(arg0 error) *CryptoSetupCloseCall {
 	c.Call = c.Call.Return(arg0)
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockCryptoSetupCloseCall) Do(f func() error) *MockCryptoSetupCloseCall {
+func (c *CryptoSetupCloseCall) Do(f func() error) *CryptoSetupCloseCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockCryptoSetupCloseCall) DoAndReturn(f func() error) *MockCryptoSetupCloseCall {
+func (c *CryptoSetupCloseCall) DoAndReturn(f func() error) *CryptoSetupCloseCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
@@ -124,31 +122,31 @@ func (m *MockCryptoSetup) ConnectionState() handshake.ConnectionState {
 }
 
 // ConnectionState indicates an expected call of ConnectionState.
-func (mr *MockCryptoSetupMockRecorder) ConnectionState() *MockCryptoSetupConnectionStateCall {
+func (mr *MockCryptoSetupMockRecorder) ConnectionState() *CryptoSetupConnectionStateCall {
 	mr.mock.ctrl.T.Helper()
 	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ConnectionState", reflect.TypeOf((*MockCryptoSetup)(nil).ConnectionState))
-	return &MockCryptoSetupConnectionStateCall{Call: call}
+	return &CryptoSetupConnectionStateCall{Call: call}
 }
 
-// MockCryptoSetupConnectionStateCall wrap *gomock.Call
-type MockCryptoSetupConnectionStateCall struct {
+// CryptoSetupConnectionStateCall wrap *gomock.Call
+type CryptoSetupConnectionStateCall struct {
 	*gomock.Call
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *MockCryptoSetupConnectionStateCall) Return(arg0 handshake.ConnectionState) *MockCryptoSetupConnectionStateCall {
+func (c *CryptoSetupConnectionStateCall) Return(arg0 handshake.ConnectionState) *CryptoSetupConnectionStateCall {
 	c.Call = c.Call.Return(arg0)
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockCryptoSetupConnectionStateCall) Do(f func() handshake.ConnectionState) *MockCryptoSetupConnectionStateCall {
+func (c *CryptoSetupConnectionStateCall) Do(f func() handshake.ConnectionState) *CryptoSetupConnectionStateCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockCryptoSetupConnectionStateCall) DoAndReturn(f func() handshake.ConnectionState) *MockCryptoSetupConnectionStateCall {
+func (c *CryptoSetupConnectionStateCall) DoAndReturn(f func() handshake.ConnectionState) *CryptoSetupConnectionStateCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
@@ -160,31 +158,31 @@ func (m *MockCryptoSetup) DiscardInitialKeys() {
 }
 
 // DiscardInitialKeys indicates an expected call of DiscardInitialKeys.
-func (mr *MockCryptoSetupMockRecorder) DiscardInitialKeys() *MockCryptoSetupDiscardInitialKeysCall {
+func (mr *MockCryptoSetupMockRecorder) DiscardInitialKeys() *CryptoSetupDiscardInitialKeysCall {
 	mr.mock.ctrl.T.Helper()
 	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DiscardInitialKeys", reflect.TypeOf((*MockCryptoSetup)(nil).DiscardInitialKeys))
-	return &MockCryptoSetupDiscardInitialKeysCall{Call: call}
+	return &CryptoSetupDiscardInitialKeysCall{Call: call}
 }
 
-// MockCryptoSetupDiscardInitialKeysCall wrap *gomock.Call
-type MockCryptoSetupDiscardInitialKeysCall struct {
+// CryptoSetupDiscardInitialKeysCall wrap *gomock.Call
+type CryptoSetupDiscardInitialKeysCall struct {
 	*gomock.Call
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *MockCryptoSetupDiscardInitialKeysCall) Return() *MockCryptoSetupDiscardInitialKeysCall {
+func (c *CryptoSetupDiscardInitialKeysCall) Return() *CryptoSetupDiscardInitialKeysCall {
 	c.Call = c.Call.Return()
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockCryptoSetupDiscardInitialKeysCall) Do(f func()) *MockCryptoSetupDiscardInitialKeysCall {
+func (c *CryptoSetupDiscardInitialKeysCall) Do(f func()) *CryptoSetupDiscardInitialKeysCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockCryptoSetupDiscardInitialKeysCall) DoAndReturn(f func()) *MockCryptoSetupDiscardInitialKeysCall {
+func (c *CryptoSetupDiscardInitialKeysCall) DoAndReturn(f func()) *CryptoSetupDiscardInitialKeysCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
@@ -199,31 +197,31 @@ func (m *MockCryptoSetup) Get0RTTOpener() (handshake.LongHeaderOpener, error) {
 }
 
 // Get0RTTOpener indicates an expected call of Get0RTTOpener.
-func (mr *MockCryptoSetupMockRecorder) Get0RTTOpener() *MockCryptoSetupGet0RTTOpenerCall {
+func (mr *MockCryptoSetupMockRecorder) Get0RTTOpener() *CryptoSetupGet0RTTOpenerCall {
 	mr.mock.ctrl.T.Helper()
 	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Get0RTTOpener", reflect.TypeOf((*MockCryptoSetup)(nil).Get0RTTOpener))
-	return &MockCryptoSetupGet0RTTOpenerCall{Call: call}
+	return &CryptoSetupGet0RTTOpenerCall{Call: call}
 }
 
-// MockCryptoSetupGet0RTTOpenerCall wrap *gomock.Call
-type MockCryptoSetupGet0RTTOpenerCall struct {
+// CryptoSetupGet0RTTOpenerCall wrap *gomock.Call
+type CryptoSetupGet0RTTOpenerCall struct {
 	*gomock.Call
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *MockCryptoSetupGet0RTTOpenerCall) Return(arg0 handshake.LongHeaderOpener, arg1 error) *MockCryptoSetupGet0RTTOpenerCall {
+func (c *CryptoSetupGet0RTTOpenerCall) Return(arg0 handshake.LongHeaderOpener, arg1 error) *CryptoSetupGet0RTTOpenerCall {
 	c.Call = c.Call.Return(arg0, arg1)
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockCryptoSetupGet0RTTOpenerCall) Do(f func() (handshake.LongHeaderOpener, error)) *MockCryptoSetupGet0RTTOpenerCall {
+func (c *CryptoSetupGet0RTTOpenerCall) Do(f func() (handshake.LongHeaderOpener, error)) *CryptoSetupGet0RTTOpenerCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockCryptoSetupGet0RTTOpenerCall) DoAndReturn(f func() (handshake.LongHeaderOpener, error)) *MockCryptoSetupGet0RTTOpenerCall {
+func (c *CryptoSetupGet0RTTOpenerCall) DoAndReturn(f func() (handshake.LongHeaderOpener, error)) *CryptoSetupGet0RTTOpenerCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
@@ -238,31 +236,31 @@ func (m *MockCryptoSetup) Get0RTTSealer() (handshake.LongHeaderSealer, error) {
 }
 
 // Get0RTTSealer indicates an expected call of Get0RTTSealer.
-func (mr *MockCryptoSetupMockRecorder) Get0RTTSealer() *MockCryptoSetupGet0RTTSealerCall {
+func (mr *MockCryptoSetupMockRecorder) Get0RTTSealer() *CryptoSetupGet0RTTSealerCall {
 	mr.mock.ctrl.T.Helper()
 	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Get0RTTSealer", reflect.TypeOf((*MockCryptoSetup)(nil).Get0RTTSealer))
-	return &MockCryptoSetupGet0RTTSealerCall{Call: call}
+	return &CryptoSetupGet0RTTSealerCall{Call: call}
 }
 
-// MockCryptoSetupGet0RTTSealerCall wrap *gomock.Call
-type MockCryptoSetupGet0RTTSealerCall struct {
+// CryptoSetupGet0RTTSealerCall wrap *gomock.Call
+type CryptoSetupGet0RTTSealerCall struct {
 	*gomock.Call
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *MockCryptoSetupGet0RTTSealerCall) Return(arg0 handshake.LongHeaderSealer, arg1 error) *MockCryptoSetupGet0RTTSealerCall {
+func (c *CryptoSetupGet0RTTSealerCall) Return(arg0 handshake.LongHeaderSealer, arg1 error) *CryptoSetupGet0RTTSealerCall {
 	c.Call = c.Call.Return(arg0, arg1)
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockCryptoSetupGet0RTTSealerCall) Do(f func() (handshake.LongHeaderSealer, error)) *MockCryptoSetupGet0RTTSealerCall {
+func (c *CryptoSetupGet0RTTSealerCall) Do(f func() (handshake.LongHeaderSealer, error)) *CryptoSetupGet0RTTSealerCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockCryptoSetupGet0RTTSealerCall) DoAndReturn(f func() (handshake.LongHeaderSealer, error)) *MockCryptoSetupGet0RTTSealerCall {
+func (c *CryptoSetupGet0RTTSealerCall) DoAndReturn(f func() (handshake.LongHeaderSealer, error)) *CryptoSetupGet0RTTSealerCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
@@ -277,31 +275,31 @@ func (m *MockCryptoSetup) Get1RTTOpener() (handshake.ShortHeaderOpener, error) {
 }
 
 // Get1RTTOpener indicates an expected call of Get1RTTOpener.
-func (mr *MockCryptoSetupMockRecorder) Get1RTTOpener() *MockCryptoSetupGet1RTTOpenerCall {
+func (mr *MockCryptoSetupMockRecorder) Get1RTTOpener() *CryptoSetupGet1RTTOpenerCall {
 	mr.mock.ctrl.T.Helper()
 	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Get1RTTOpener", reflect.TypeOf((*MockCryptoSetup)(nil).Get1RTTOpener))
-	return &MockCryptoSetupGet1RTTOpenerCall{Call: call}
+	return &CryptoSetupGet1RTTOpenerCall{Call: call}
 }
 
-// MockCryptoSetupGet1RTTOpenerCall wrap *gomock.Call
-type MockCryptoSetupGet1RTTOpenerCall struct {
+// CryptoSetupGet1RTTOpenerCall wrap *gomock.Call
+type CryptoSetupGet1RTTOpenerCall struct {
 	*gomock.Call
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *MockCryptoSetupGet1RTTOpenerCall) Return(arg0 handshake.ShortHeaderOpener, arg1 error) *MockCryptoSetupGet1RTTOpenerCall {
+func (c *CryptoSetupGet1RTTOpenerCall) Return(arg0 handshake.ShortHeaderOpener, arg1 error) *CryptoSetupGet1RTTOpenerCall {
 	c.Call = c.Call.Return(arg0, arg1)
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockCryptoSetupGet1RTTOpenerCall) Do(f func() (handshake.ShortHeaderOpener, error)) *MockCryptoSetupGet1RTTOpenerCall {
+func (c *CryptoSetupGet1RTTOpenerCall) Do(f func() (handshake.ShortHeaderOpener, error)) *CryptoSetupGet1RTTOpenerCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockCryptoSetupGet1RTTOpenerCall) DoAndReturn(f func() (handshake.ShortHeaderOpener, error)) *MockCryptoSetupGet1RTTOpenerCall {
+func (c *CryptoSetupGet1RTTOpenerCall) DoAndReturn(f func() (handshake.ShortHeaderOpener, error)) *CryptoSetupGet1RTTOpenerCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
@@ -316,31 +314,31 @@ func (m *MockCryptoSetup) Get1RTTSealer() (handshake.ShortHeaderSealer, error) {
 }
 
 // Get1RTTSealer indicates an expected call of Get1RTTSealer.
-func (mr *MockCryptoSetupMockRecorder) Get1RTTSealer() *MockCryptoSetupGet1RTTSealerCall {
+func (mr *MockCryptoSetupMockRecorder) Get1RTTSealer() *CryptoSetupGet1RTTSealerCall {
 	mr.mock.ctrl.T.Helper()
 	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Get1RTTSealer", reflect.TypeOf((*MockCryptoSetup)(nil).Get1RTTSealer))
-	return &MockCryptoSetupGet1RTTSealerCall{Call: call}
+	return &CryptoSetupGet1RTTSealerCall{Call: call}
 }
 
-// MockCryptoSetupGet1RTTSealerCall wrap *gomock.Call
-type MockCryptoSetupGet1RTTSealerCall struct {
+// CryptoSetupGet1RTTSealerCall wrap *gomock.Call
+type CryptoSetupGet1RTTSealerCall struct {
 	*gomock.Call
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *MockCryptoSetupGet1RTTSealerCall) Return(arg0 handshake.ShortHeaderSealer, arg1 error) *MockCryptoSetupGet1RTTSealerCall {
+func (c *CryptoSetupGet1RTTSealerCall) Return(arg0 handshake.ShortHeaderSealer, arg1 error) *CryptoSetupGet1RTTSealerCall {
 	c.Call = c.Call.Return(arg0, arg1)
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockCryptoSetupGet1RTTSealerCall) Do(f func() (handshake.ShortHeaderSealer, error)) *MockCryptoSetupGet1RTTSealerCall {
+func (c *CryptoSetupGet1RTTSealerCall) Do(f func() (handshake.ShortHeaderSealer, error)) *CryptoSetupGet1RTTSealerCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockCryptoSetupGet1RTTSealerCall) DoAndReturn(f func() (handshake.ShortHeaderSealer, error)) *MockCryptoSetupGet1RTTSealerCall {
+func (c *CryptoSetupGet1RTTSealerCall) DoAndReturn(f func() (handshake.ShortHeaderSealer, error)) *CryptoSetupGet1RTTSealerCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
@@ -355,31 +353,31 @@ func (m *MockCryptoSetup) GetHandshakeOpener() (handshake.LongHeaderOpener, erro
 }
 
 // GetHandshakeOpener indicates an expected call of GetHandshakeOpener.
-func (mr *MockCryptoSetupMockRecorder) GetHandshakeOpener() *MockCryptoSetupGetHandshakeOpenerCall {
+func (mr *MockCryptoSetupMockRecorder) GetHandshakeOpener() *CryptoSetupGetHandshakeOpenerCall {
 	mr.mock.ctrl.T.Helper()
 	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetHandshakeOpener", reflect.TypeOf((*MockCryptoSetup)(nil).GetHandshakeOpener))
-	return &MockCryptoSetupGetHandshakeOpenerCall{Call: call}
+	return &CryptoSetupGetHandshakeOpenerCall{Call: call}
 }
 
-// MockCryptoSetupGetHandshakeOpenerCall wrap *gomock.Call
-type MockCryptoSetupGetHandshakeOpenerCall struct {
+// CryptoSetupGetHandshakeOpenerCall wrap *gomock.Call
+type CryptoSetupGetHandshakeOpenerCall struct {
 	*gomock.Call
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *MockCryptoSetupGetHandshakeOpenerCall) Return(arg0 handshake.LongHeaderOpener, arg1 error) *MockCryptoSetupGetHandshakeOpenerCall {
+func (c *CryptoSetupGetHandshakeOpenerCall) Return(arg0 handshake.LongHeaderOpener, arg1 error) *CryptoSetupGetHandshakeOpenerCall {
 	c.Call = c.Call.Return(arg0, arg1)
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockCryptoSetupGetHandshakeOpenerCall) Do(f func() (handshake.LongHeaderOpener, error)) *MockCryptoSetupGetHandshakeOpenerCall {
+func (c *CryptoSetupGetHandshakeOpenerCall) Do(f func() (handshake.LongHeaderOpener, error)) *CryptoSetupGetHandshakeOpenerCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockCryptoSetupGetHandshakeOpenerCall) DoAndReturn(f func() (handshake.LongHeaderOpener, error)) *MockCryptoSetupGetHandshakeOpenerCall {
+func (c *CryptoSetupGetHandshakeOpenerCall) DoAndReturn(f func() (handshake.LongHeaderOpener, error)) *CryptoSetupGetHandshakeOpenerCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
@@ -394,31 +392,31 @@ func (m *MockCryptoSetup) GetHandshakeSealer() (handshake.LongHeaderSealer, erro
 }
 
 // GetHandshakeSealer indicates an expected call of GetHandshakeSealer.
-func (mr *MockCryptoSetupMockRecorder) GetHandshakeSealer() *MockCryptoSetupGetHandshakeSealerCall {
+func (mr *MockCryptoSetupMockRecorder) GetHandshakeSealer() *CryptoSetupGetHandshakeSealerCall {
 	mr.mock.ctrl.T.Helper()
 	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetHandshakeSealer", reflect.TypeOf((*MockCryptoSetup)(nil).GetHandshakeSealer))
-	return &MockCryptoSetupGetHandshakeSealerCall{Call: call}
+	return &CryptoSetupGetHandshakeSealerCall{Call: call}
 }
 
-// MockCryptoSetupGetHandshakeSealerCall wrap *gomock.Call
-type MockCryptoSetupGetHandshakeSealerCall struct {
+// CryptoSetupGetHandshakeSealerCall wrap *gomock.Call
+type CryptoSetupGetHandshakeSealerCall struct {
 	*gomock.Call
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *MockCryptoSetupGetHandshakeSealerCall) Return(arg0 handshake.LongHeaderSealer, arg1 error) *MockCryptoSetupGetHandshakeSealerCall {
+func (c *CryptoSetupGetHandshakeSealerCall) Return(arg0 handshake.LongHeaderSealer, arg1 error) *CryptoSetupGetHandshakeSealerCall {
 	c.Call = c.Call.Return(arg0, arg1)
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockCryptoSetupGetHandshakeSealerCall) Do(f func() (handshake.LongHeaderSealer, error)) *MockCryptoSetupGetHandshakeSealerCall {
+func (c *CryptoSetupGetHandshakeSealerCall) Do(f func() (handshake.LongHeaderSealer, error)) *CryptoSetupGetHandshakeSealerCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockCryptoSetupGetHandshakeSealerCall) DoAndReturn(f func() (handshake.LongHeaderSealer, error)) *MockCryptoSetupGetHandshakeSealerCall {
+func (c *CryptoSetupGetHandshakeSealerCall) DoAndReturn(f func() (handshake.LongHeaderSealer, error)) *CryptoSetupGetHandshakeSealerCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
@@ -433,31 +431,31 @@ func (m *MockCryptoSetup) GetInitialOpener() (handshake.LongHeaderOpener, error)
 }
 
 // GetInitialOpener indicates an expected call of GetInitialOpener.
-func (mr *MockCryptoSetupMockRecorder) GetInitialOpener() *MockCryptoSetupGetInitialOpenerCall {
+func (mr *MockCryptoSetupMockRecorder) GetInitialOpener() *CryptoSetupGetInitialOpenerCall {
 	mr.mock.ctrl.T.Helper()
 	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetInitialOpener", reflect.TypeOf((*MockCryptoSetup)(nil).GetInitialOpener))
-	return &MockCryptoSetupGetInitialOpenerCall{Call: call}
+	return &CryptoSetupGetInitialOpenerCall{Call: call}
 }
 
-// MockCryptoSetupGetInitialOpenerCall wrap *gomock.Call
-type MockCryptoSetupGetInitialOpenerCall struct {
+// CryptoSetupGetInitialOpenerCall wrap *gomock.Call
+type CryptoSetupGetInitialOpenerCall struct {
 	*gomock.Call
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *MockCryptoSetupGetInitialOpenerCall) Return(arg0 handshake.LongHeaderOpener, arg1 error) *MockCryptoSetupGetInitialOpenerCall {
+func (c *CryptoSetupGetInitialOpenerCall) Return(arg0 handshake.LongHeaderOpener, arg1 error) *CryptoSetupGetInitialOpenerCall {
 	c.Call = c.Call.Return(arg0, arg1)
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockCryptoSetupGetInitialOpenerCall) Do(f func() (handshake.LongHeaderOpener, error)) *MockCryptoSetupGetInitialOpenerCall {
+func (c *CryptoSetupGetInitialOpenerCall) Do(f func() (handshake.LongHeaderOpener, error)) *CryptoSetupGetInitialOpenerCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockCryptoSetupGetInitialOpenerCall) DoAndReturn(f func() (handshake.LongHeaderOpener, error)) *MockCryptoSetupGetInitialOpenerCall {
+func (c *CryptoSetupGetInitialOpenerCall) DoAndReturn(f func() (handshake.LongHeaderOpener, error)) *CryptoSetupGetInitialOpenerCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
@@ -472,31 +470,31 @@ func (m *MockCryptoSetup) GetInitialSealer() (handshake.LongHeaderSealer, error)
 }
 
 // GetInitialSealer indicates an expected call of GetInitialSealer.
-func (mr *MockCryptoSetupMockRecorder) GetInitialSealer() *MockCryptoSetupGetInitialSealerCall {
+func (mr *MockCryptoSetupMockRecorder) GetInitialSealer() *CryptoSetupGetInitialSealerCall {
 	mr.mock.ctrl.T.Helper()
 	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetInitialSealer", reflect.TypeOf((*MockCryptoSetup)(nil).GetInitialSealer))
-	return &MockCryptoSetupGetInitialSealerCall{Call: call}
+	return &CryptoSetupGetInitialSealerCall{Call: call}
 }
 
-// MockCryptoSetupGetInitialSealerCall wrap *gomock.Call
-type MockCryptoSetupGetInitialSealerCall struct {
+// CryptoSetupGetInitialSealerCall wrap *gomock.Call
+type CryptoSetupGetInitialSealerCall struct {
 	*gomock.Call
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *MockCryptoSetupGetInitialSealerCall) Return(arg0 handshake.LongHeaderSealer, arg1 error) *MockCryptoSetupGetInitialSealerCall {
+func (c *CryptoSetupGetInitialSealerCall) Return(arg0 handshake.LongHeaderSealer, arg1 error) *CryptoSetupGetInitialSealerCall {
 	c.Call = c.Call.Return(arg0, arg1)
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockCryptoSetupGetInitialSealerCall) Do(f func() (handshake.LongHeaderSealer, error)) *MockCryptoSetupGetInitialSealerCall {
+func (c *CryptoSetupGetInitialSealerCall) Do(f func() (handshake.LongHeaderSealer, error)) *CryptoSetupGetInitialSealerCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockCryptoSetupGetInitialSealerCall) DoAndReturn(f func() (handshake.LongHeaderSealer, error)) *MockCryptoSetupGetInitialSealerCall {
+func (c *CryptoSetupGetInitialSealerCall) DoAndReturn(f func() (handshake.LongHeaderSealer, error)) *CryptoSetupGetInitialSealerCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
@@ -511,31 +509,31 @@ func (m *MockCryptoSetup) GetSessionTicket() ([]byte, error) {
 }
 
 // GetSessionTicket indicates an expected call of GetSessionTicket.
-func (mr *MockCryptoSetupMockRecorder) GetSessionTicket() *MockCryptoSetupGetSessionTicketCall {
+func (mr *MockCryptoSetupMockRecorder) GetSessionTicket() *CryptoSetupGetSessionTicketCall {
 	mr.mock.ctrl.T.Helper()
 	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetSessionTicket", reflect.TypeOf((*MockCryptoSetup)(nil).GetSessionTicket))
-	return &MockCryptoSetupGetSessionTicketCall{Call: call}
+	return &CryptoSetupGetSessionTicketCall{Call: call}
 }
 
-// MockCryptoSetupGetSessionTicketCall wrap *gomock.Call
-type MockCryptoSetupGetSessionTicketCall struct {
+// CryptoSetupGetSessionTicketCall wrap *gomock.Call
+type CryptoSetupGetSessionTicketCall struct {
 	*gomock.Call
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *MockCryptoSetupGetSessionTicketCall) Return(arg0 []byte, arg1 error) *MockCryptoSetupGetSessionTicketCall {
+func (c *CryptoSetupGetSessionTicketCall) Return(arg0 []byte, arg1 error) *CryptoSetupGetSessionTicketCall {
 	c.Call = c.Call.Return(arg0, arg1)
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockCryptoSetupGetSessionTicketCall) Do(f func() ([]byte, error)) *MockCryptoSetupGetSessionTicketCall {
+func (c *CryptoSetupGetSessionTicketCall) Do(f func() ([]byte, error)) *CryptoSetupGetSessionTicketCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockCryptoSetupGetSessionTicketCall) DoAndReturn(f func() ([]byte, error)) *MockCryptoSetupGetSessionTicketCall {
+func (c *CryptoSetupGetSessionTicketCall) DoAndReturn(f func() ([]byte, error)) *CryptoSetupGetSessionTicketCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
@@ -549,31 +547,31 @@ func (m *MockCryptoSetup) HandleMessage(arg0 []byte, arg1 protocol.EncryptionLev
 }
 
 // HandleMessage indicates an expected call of HandleMessage.
-func (mr *MockCryptoSetupMockRecorder) HandleMessage(arg0, arg1 any) *MockCryptoSetupHandleMessageCall {
+func (mr *MockCryptoSetupMockRecorder) HandleMessage(arg0, arg1 any) *CryptoSetupHandleMessageCall {
 	mr.mock.ctrl.T.Helper()
 	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "HandleMessage", reflect.TypeOf((*MockCryptoSetup)(nil).HandleMessage), arg0, arg1)
-	return &MockCryptoSetupHandleMessageCall{Call: call}
+	return &CryptoSetupHandleMessageCall{Call: call}
 }
 
-// MockCryptoSetupHandleMessageCall wrap *gomock.Call
-type MockCryptoSetupHandleMessageCall struct {
+// CryptoSetupHandleMessageCall wrap *gomock.Call
+type CryptoSetupHandleMessageCall struct {
 	*gomock.Call
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *MockCryptoSetupHandleMessageCall) Return(arg0 error) *MockCryptoSetupHandleMessageCall {
+func (c *CryptoSetupHandleMessageCall) Return(arg0 error) *CryptoSetupHandleMessageCall {
 	c.Call = c.Call.Return(arg0)
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockCryptoSetupHandleMessageCall) Do(f func([]byte, protocol.EncryptionLevel) error) *MockCryptoSetupHandleMessageCall {
+func (c *CryptoSetupHandleMessageCall) Do(f func([]byte, protocol.EncryptionLevel) error) *CryptoSetupHandleMessageCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockCryptoSetupHandleMessageCall) DoAndReturn(f func([]byte, protocol.EncryptionLevel) error) *MockCryptoSetupHandleMessageCall {
+func (c *CryptoSetupHandleMessageCall) DoAndReturn(f func([]byte, protocol.EncryptionLevel) error) *CryptoSetupHandleMessageCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
@@ -587,31 +585,31 @@ func (m *MockCryptoSetup) NextEvent() handshake.Event {
 }
 
 // NextEvent indicates an expected call of NextEvent.
-func (mr *MockCryptoSetupMockRecorder) NextEvent() *MockCryptoSetupNextEventCall {
+func (mr *MockCryptoSetupMockRecorder) NextEvent() *CryptoSetupNextEventCall {
 	mr.mock.ctrl.T.Helper()
 	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "NextEvent", reflect.TypeOf((*MockCryptoSetup)(nil).NextEvent))
-	return &MockCryptoSetupNextEventCall{Call: call}
+	return &CryptoSetupNextEventCall{Call: call}
 }
 
-// MockCryptoSetupNextEventCall wrap *gomock.Call
-type MockCryptoSetupNextEventCall struct {
+// CryptoSetupNextEventCall wrap *gomock.Call
+type CryptoSetupNextEventCall struct {
 	*gomock.Call
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *MockCryptoSetupNextEventCall) Return(arg0 handshake.Event) *MockCryptoSetupNextEventCall {
+func (c *CryptoSetupNextEventCall) Return(arg0 handshake.Event) *CryptoSetupNextEventCall {
 	c.Call = c.Call.Return(arg0)
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockCryptoSetupNextEventCall) Do(f func() handshake.Event) *MockCryptoSetupNextEventCall {
+func (c *CryptoSetupNextEventCall) Do(f func() handshake.Event) *CryptoSetupNextEventCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockCryptoSetupNextEventCall) DoAndReturn(f func() handshake.Event) *MockCryptoSetupNextEventCall {
+func (c *CryptoSetupNextEventCall) DoAndReturn(f func() handshake.Event) *CryptoSetupNextEventCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
@@ -623,31 +621,31 @@ func (m *MockCryptoSetup) SetHandshakeConfirmed() {
 }
 
 // SetHandshakeConfirmed indicates an expected call of SetHandshakeConfirmed.
-func (mr *MockCryptoSetupMockRecorder) SetHandshakeConfirmed() *MockCryptoSetupSetHandshakeConfirmedCall {
+func (mr *MockCryptoSetupMockRecorder) SetHandshakeConfirmed() *CryptoSetupSetHandshakeConfirmedCall {
 	mr.mock.ctrl.T.Helper()
 	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetHandshakeConfirmed", reflect.TypeOf((*MockCryptoSetup)(nil).SetHandshakeConfirmed))
-	return &MockCryptoSetupSetHandshakeConfirmedCall{Call: call}
+	return &CryptoSetupSetHandshakeConfirmedCall{Call: call}
 }
 
-// MockCryptoSetupSetHandshakeConfirmedCall wrap *gomock.Call
-type MockCryptoSetupSetHandshakeConfirmedCall struct {
+// CryptoSetupSetHandshakeConfirmedCall wrap *gomock.Call
+type CryptoSetupSetHandshakeConfirmedCall struct {
 	*gomock.Call
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *MockCryptoSetupSetHandshakeConfirmedCall) Return() *MockCryptoSetupSetHandshakeConfirmedCall {
+func (c *CryptoSetupSetHandshakeConfirmedCall) Return() *CryptoSetupSetHandshakeConfirmedCall {
 	c.Call = c.Call.Return()
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockCryptoSetupSetHandshakeConfirmedCall) Do(f func()) *MockCryptoSetupSetHandshakeConfirmedCall {
+func (c *CryptoSetupSetHandshakeConfirmedCall) Do(f func()) *CryptoSetupSetHandshakeConfirmedCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockCryptoSetupSetHandshakeConfirmedCall) DoAndReturn(f func()) *MockCryptoSetupSetHandshakeConfirmedCall {
+func (c *CryptoSetupSetHandshakeConfirmedCall) DoAndReturn(f func()) *CryptoSetupSetHandshakeConfirmedCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
@@ -661,69 +659,69 @@ func (m *MockCryptoSetup) SetLargest1RTTAcked(arg0 protocol.PacketNumber) error 
 }
 
 // SetLargest1RTTAcked indicates an expected call of SetLargest1RTTAcked.
-func (mr *MockCryptoSetupMockRecorder) SetLargest1RTTAcked(arg0 any) *MockCryptoSetupSetLargest1RTTAckedCall {
+func (mr *MockCryptoSetupMockRecorder) SetLargest1RTTAcked(arg0 any) *CryptoSetupSetLargest1RTTAckedCall {
 	mr.mock.ctrl.T.Helper()
 	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetLargest1RTTAcked", reflect.TypeOf((*MockCryptoSetup)(nil).SetLargest1RTTAcked), arg0)
-	return &MockCryptoSetupSetLargest1RTTAckedCall{Call: call}
+	return &CryptoSetupSetLargest1RTTAckedCall{Call: call}
 }
 
-// MockCryptoSetupSetLargest1RTTAckedCall wrap *gomock.Call
-type MockCryptoSetupSetLargest1RTTAckedCall struct {
+// CryptoSetupSetLargest1RTTAckedCall wrap *gomock.Call
+type CryptoSetupSetLargest1RTTAckedCall struct {
 	*gomock.Call
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *MockCryptoSetupSetLargest1RTTAckedCall) Return(arg0 error) *MockCryptoSetupSetLargest1RTTAckedCall {
+func (c *CryptoSetupSetLargest1RTTAckedCall) Return(arg0 error) *CryptoSetupSetLargest1RTTAckedCall {
 	c.Call = c.Call.Return(arg0)
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockCryptoSetupSetLargest1RTTAckedCall) Do(f func(protocol.PacketNumber) error) *MockCryptoSetupSetLargest1RTTAckedCall {
+func (c *CryptoSetupSetLargest1RTTAckedCall) Do(f func(protocol.PacketNumber) error) *CryptoSetupSetLargest1RTTAckedCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockCryptoSetupSetLargest1RTTAckedCall) DoAndReturn(f func(protocol.PacketNumber) error) *MockCryptoSetupSetLargest1RTTAckedCall {
+func (c *CryptoSetupSetLargest1RTTAckedCall) DoAndReturn(f func(protocol.PacketNumber) error) *CryptoSetupSetLargest1RTTAckedCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
 
 // StartHandshake mocks base method.
-func (m *MockCryptoSetup) StartHandshake(arg0 context.Context) error {
+func (m *MockCryptoSetup) StartHandshake() error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "StartHandshake", arg0)
+	ret := m.ctrl.Call(m, "StartHandshake")
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // StartHandshake indicates an expected call of StartHandshake.
-func (mr *MockCryptoSetupMockRecorder) StartHandshake(arg0 any) *MockCryptoSetupStartHandshakeCall {
+func (mr *MockCryptoSetupMockRecorder) StartHandshake() *CryptoSetupStartHandshakeCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StartHandshake", reflect.TypeOf((*MockCryptoSetup)(nil).StartHandshake), arg0)
-	return &MockCryptoSetupStartHandshakeCall{Call: call}
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StartHandshake", reflect.TypeOf((*MockCryptoSetup)(nil).StartHandshake))
+	return &CryptoSetupStartHandshakeCall{Call: call}
 }
 
-// MockCryptoSetupStartHandshakeCall wrap *gomock.Call
-type MockCryptoSetupStartHandshakeCall struct {
+// CryptoSetupStartHandshakeCall wrap *gomock.Call
+type CryptoSetupStartHandshakeCall struct {
 	*gomock.Call
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *MockCryptoSetupStartHandshakeCall) Return(arg0 error) *MockCryptoSetupStartHandshakeCall {
+func (c *CryptoSetupStartHandshakeCall) Return(arg0 error) *CryptoSetupStartHandshakeCall {
 	c.Call = c.Call.Return(arg0)
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockCryptoSetupStartHandshakeCall) Do(f func(context.Context) error) *MockCryptoSetupStartHandshakeCall {
+func (c *CryptoSetupStartHandshakeCall) Do(f func() error) *CryptoSetupStartHandshakeCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockCryptoSetupStartHandshakeCall) DoAndReturn(f func(context.Context) error) *MockCryptoSetupStartHandshakeCall {
+func (c *CryptoSetupStartHandshakeCall) DoAndReturn(f func() error) *CryptoSetupStartHandshakeCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }

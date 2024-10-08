@@ -5,7 +5,6 @@
 //
 //	mockgen -typed -build_flags=-tags=gomock -package quic -self_package github.com/quic-go/quic-go -destination mock_conn_runner_test.go github.com/quic-go/quic-go ConnRunner
 //
-
 // Package quic is a generated GoMock package.
 package quic
 
@@ -48,31 +47,31 @@ func (m *MockConnRunner) Add(arg0 protocol.ConnectionID, arg1 packetHandler) boo
 }
 
 // Add indicates an expected call of Add.
-func (mr *MockConnRunnerMockRecorder) Add(arg0, arg1 any) *MockConnRunnerAddCall {
+func (mr *MockConnRunnerMockRecorder) Add(arg0, arg1 any) *ConnRunnerAddCall {
 	mr.mock.ctrl.T.Helper()
 	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Add", reflect.TypeOf((*MockConnRunner)(nil).Add), arg0, arg1)
-	return &MockConnRunnerAddCall{Call: call}
+	return &ConnRunnerAddCall{Call: call}
 }
 
-// MockConnRunnerAddCall wrap *gomock.Call
-type MockConnRunnerAddCall struct {
+// ConnRunnerAddCall wrap *gomock.Call
+type ConnRunnerAddCall struct {
 	*gomock.Call
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *MockConnRunnerAddCall) Return(arg0 bool) *MockConnRunnerAddCall {
+func (c *ConnRunnerAddCall) Return(arg0 bool) *ConnRunnerAddCall {
 	c.Call = c.Call.Return(arg0)
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockConnRunnerAddCall) Do(f func(protocol.ConnectionID, packetHandler) bool) *MockConnRunnerAddCall {
+func (c *ConnRunnerAddCall) Do(f func(protocol.ConnectionID, packetHandler) bool) *ConnRunnerAddCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockConnRunnerAddCall) DoAndReturn(f func(protocol.ConnectionID, packetHandler) bool) *MockConnRunnerAddCall {
+func (c *ConnRunnerAddCall) DoAndReturn(f func(protocol.ConnectionID, packetHandler) bool) *ConnRunnerAddCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
@@ -84,31 +83,31 @@ func (m *MockConnRunner) AddResetToken(arg0 protocol.StatelessResetToken, arg1 p
 }
 
 // AddResetToken indicates an expected call of AddResetToken.
-func (mr *MockConnRunnerMockRecorder) AddResetToken(arg0, arg1 any) *MockConnRunnerAddResetTokenCall {
+func (mr *MockConnRunnerMockRecorder) AddResetToken(arg0, arg1 any) *ConnRunnerAddResetTokenCall {
 	mr.mock.ctrl.T.Helper()
 	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AddResetToken", reflect.TypeOf((*MockConnRunner)(nil).AddResetToken), arg0, arg1)
-	return &MockConnRunnerAddResetTokenCall{Call: call}
+	return &ConnRunnerAddResetTokenCall{Call: call}
 }
 
-// MockConnRunnerAddResetTokenCall wrap *gomock.Call
-type MockConnRunnerAddResetTokenCall struct {
+// ConnRunnerAddResetTokenCall wrap *gomock.Call
+type ConnRunnerAddResetTokenCall struct {
 	*gomock.Call
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *MockConnRunnerAddResetTokenCall) Return() *MockConnRunnerAddResetTokenCall {
+func (c *ConnRunnerAddResetTokenCall) Return() *ConnRunnerAddResetTokenCall {
 	c.Call = c.Call.Return()
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockConnRunnerAddResetTokenCall) Do(f func(protocol.StatelessResetToken, packetHandler)) *MockConnRunnerAddResetTokenCall {
+func (c *ConnRunnerAddResetTokenCall) Do(f func(protocol.StatelessResetToken, packetHandler)) *ConnRunnerAddResetTokenCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockConnRunnerAddResetTokenCall) DoAndReturn(f func(protocol.StatelessResetToken, packetHandler)) *MockConnRunnerAddResetTokenCall {
+func (c *ConnRunnerAddResetTokenCall) DoAndReturn(f func(protocol.StatelessResetToken, packetHandler)) *ConnRunnerAddResetTokenCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
@@ -122,31 +121,31 @@ func (m *MockConnRunner) GetStatelessResetToken(arg0 protocol.ConnectionID) prot
 }
 
 // GetStatelessResetToken indicates an expected call of GetStatelessResetToken.
-func (mr *MockConnRunnerMockRecorder) GetStatelessResetToken(arg0 any) *MockConnRunnerGetStatelessResetTokenCall {
+func (mr *MockConnRunnerMockRecorder) GetStatelessResetToken(arg0 any) *ConnRunnerGetStatelessResetTokenCall {
 	mr.mock.ctrl.T.Helper()
 	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetStatelessResetToken", reflect.TypeOf((*MockConnRunner)(nil).GetStatelessResetToken), arg0)
-	return &MockConnRunnerGetStatelessResetTokenCall{Call: call}
+	return &ConnRunnerGetStatelessResetTokenCall{Call: call}
 }
 
-// MockConnRunnerGetStatelessResetTokenCall wrap *gomock.Call
-type MockConnRunnerGetStatelessResetTokenCall struct {
+// ConnRunnerGetStatelessResetTokenCall wrap *gomock.Call
+type ConnRunnerGetStatelessResetTokenCall struct {
 	*gomock.Call
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *MockConnRunnerGetStatelessResetTokenCall) Return(arg0 protocol.StatelessResetToken) *MockConnRunnerGetStatelessResetTokenCall {
+func (c *ConnRunnerGetStatelessResetTokenCall) Return(arg0 protocol.StatelessResetToken) *ConnRunnerGetStatelessResetTokenCall {
 	c.Call = c.Call.Return(arg0)
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockConnRunnerGetStatelessResetTokenCall) Do(f func(protocol.ConnectionID) protocol.StatelessResetToken) *MockConnRunnerGetStatelessResetTokenCall {
+func (c *ConnRunnerGetStatelessResetTokenCall) Do(f func(protocol.ConnectionID) protocol.StatelessResetToken) *ConnRunnerGetStatelessResetTokenCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockConnRunnerGetStatelessResetTokenCall) DoAndReturn(f func(protocol.ConnectionID) protocol.StatelessResetToken) *MockConnRunnerGetStatelessResetTokenCall {
+func (c *ConnRunnerGetStatelessResetTokenCall) DoAndReturn(f func(protocol.ConnectionID) protocol.StatelessResetToken) *ConnRunnerGetStatelessResetTokenCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
@@ -158,31 +157,31 @@ func (m *MockConnRunner) Remove(arg0 protocol.ConnectionID) {
 }
 
 // Remove indicates an expected call of Remove.
-func (mr *MockConnRunnerMockRecorder) Remove(arg0 any) *MockConnRunnerRemoveCall {
+func (mr *MockConnRunnerMockRecorder) Remove(arg0 any) *ConnRunnerRemoveCall {
 	mr.mock.ctrl.T.Helper()
 	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Remove", reflect.TypeOf((*MockConnRunner)(nil).Remove), arg0)
-	return &MockConnRunnerRemoveCall{Call: call}
+	return &ConnRunnerRemoveCall{Call: call}
 }
 
-// MockConnRunnerRemoveCall wrap *gomock.Call
-type MockConnRunnerRemoveCall struct {
+// ConnRunnerRemoveCall wrap *gomock.Call
+type ConnRunnerRemoveCall struct {
 	*gomock.Call
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *MockConnRunnerRemoveCall) Return() *MockConnRunnerRemoveCall {
+func (c *ConnRunnerRemoveCall) Return() *ConnRunnerRemoveCall {
 	c.Call = c.Call.Return()
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockConnRunnerRemoveCall) Do(f func(protocol.ConnectionID)) *MockConnRunnerRemoveCall {
+func (c *ConnRunnerRemoveCall) Do(f func(protocol.ConnectionID)) *ConnRunnerRemoveCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockConnRunnerRemoveCall) DoAndReturn(f func(protocol.ConnectionID)) *MockConnRunnerRemoveCall {
+func (c *ConnRunnerRemoveCall) DoAndReturn(f func(protocol.ConnectionID)) *ConnRunnerRemoveCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
@@ -194,67 +193,67 @@ func (m *MockConnRunner) RemoveResetToken(arg0 protocol.StatelessResetToken) {
 }
 
 // RemoveResetToken indicates an expected call of RemoveResetToken.
-func (mr *MockConnRunnerMockRecorder) RemoveResetToken(arg0 any) *MockConnRunnerRemoveResetTokenCall {
+func (mr *MockConnRunnerMockRecorder) RemoveResetToken(arg0 any) *ConnRunnerRemoveResetTokenCall {
 	mr.mock.ctrl.T.Helper()
 	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RemoveResetToken", reflect.TypeOf((*MockConnRunner)(nil).RemoveResetToken), arg0)
-	return &MockConnRunnerRemoveResetTokenCall{Call: call}
+	return &ConnRunnerRemoveResetTokenCall{Call: call}
 }
 
-// MockConnRunnerRemoveResetTokenCall wrap *gomock.Call
-type MockConnRunnerRemoveResetTokenCall struct {
+// ConnRunnerRemoveResetTokenCall wrap *gomock.Call
+type ConnRunnerRemoveResetTokenCall struct {
 	*gomock.Call
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *MockConnRunnerRemoveResetTokenCall) Return() *MockConnRunnerRemoveResetTokenCall {
+func (c *ConnRunnerRemoveResetTokenCall) Return() *ConnRunnerRemoveResetTokenCall {
 	c.Call = c.Call.Return()
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockConnRunnerRemoveResetTokenCall) Do(f func(protocol.StatelessResetToken)) *MockConnRunnerRemoveResetTokenCall {
+func (c *ConnRunnerRemoveResetTokenCall) Do(f func(protocol.StatelessResetToken)) *ConnRunnerRemoveResetTokenCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockConnRunnerRemoveResetTokenCall) DoAndReturn(f func(protocol.StatelessResetToken)) *MockConnRunnerRemoveResetTokenCall {
+func (c *ConnRunnerRemoveResetTokenCall) DoAndReturn(f func(protocol.StatelessResetToken)) *ConnRunnerRemoveResetTokenCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
 
 // ReplaceWithClosed mocks base method.
-func (m *MockConnRunner) ReplaceWithClosed(arg0 []protocol.ConnectionID, arg1 []byte) {
+func (m *MockConnRunner) ReplaceWithClosed(arg0 []protocol.ConnectionID, arg1 protocol.Perspective, arg2 []byte) {
 	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "ReplaceWithClosed", arg0, arg1)
+	m.ctrl.Call(m, "ReplaceWithClosed", arg0, arg1, arg2)
 }
 
 // ReplaceWithClosed indicates an expected call of ReplaceWithClosed.
-func (mr *MockConnRunnerMockRecorder) ReplaceWithClosed(arg0, arg1 any) *MockConnRunnerReplaceWithClosedCall {
+func (mr *MockConnRunnerMockRecorder) ReplaceWithClosed(arg0, arg1, arg2 any) *ConnRunnerReplaceWithClosedCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ReplaceWithClosed", reflect.TypeOf((*MockConnRunner)(nil).ReplaceWithClosed), arg0, arg1)
-	return &MockConnRunnerReplaceWithClosedCall{Call: call}
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ReplaceWithClosed", reflect.TypeOf((*MockConnRunner)(nil).ReplaceWithClosed), arg0, arg1, arg2)
+	return &ConnRunnerReplaceWithClosedCall{Call: call}
 }
 
-// MockConnRunnerReplaceWithClosedCall wrap *gomock.Call
-type MockConnRunnerReplaceWithClosedCall struct {
+// ConnRunnerReplaceWithClosedCall wrap *gomock.Call
+type ConnRunnerReplaceWithClosedCall struct {
 	*gomock.Call
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *MockConnRunnerReplaceWithClosedCall) Return() *MockConnRunnerReplaceWithClosedCall {
+func (c *ConnRunnerReplaceWithClosedCall) Return() *ConnRunnerReplaceWithClosedCall {
 	c.Call = c.Call.Return()
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockConnRunnerReplaceWithClosedCall) Do(f func([]protocol.ConnectionID, []byte)) *MockConnRunnerReplaceWithClosedCall {
+func (c *ConnRunnerReplaceWithClosedCall) Do(f func([]protocol.ConnectionID, protocol.Perspective, []byte)) *ConnRunnerReplaceWithClosedCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockConnRunnerReplaceWithClosedCall) DoAndReturn(f func([]protocol.ConnectionID, []byte)) *MockConnRunnerReplaceWithClosedCall {
+func (c *ConnRunnerReplaceWithClosedCall) DoAndReturn(f func([]protocol.ConnectionID, protocol.Perspective, []byte)) *ConnRunnerReplaceWithClosedCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
@@ -266,31 +265,31 @@ func (m *MockConnRunner) Retire(arg0 protocol.ConnectionID) {
 }
 
 // Retire indicates an expected call of Retire.
-func (mr *MockConnRunnerMockRecorder) Retire(arg0 any) *MockConnRunnerRetireCall {
+func (mr *MockConnRunnerMockRecorder) Retire(arg0 any) *ConnRunnerRetireCall {
 	mr.mock.ctrl.T.Helper()
 	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Retire", reflect.TypeOf((*MockConnRunner)(nil).Retire), arg0)
-	return &MockConnRunnerRetireCall{Call: call}
+	return &ConnRunnerRetireCall{Call: call}
 }
 
-// MockConnRunnerRetireCall wrap *gomock.Call
-type MockConnRunnerRetireCall struct {
+// ConnRunnerRetireCall wrap *gomock.Call
+type ConnRunnerRetireCall struct {
 	*gomock.Call
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *MockConnRunnerRetireCall) Return() *MockConnRunnerRetireCall {
+func (c *ConnRunnerRetireCall) Return() *ConnRunnerRetireCall {
 	c.Call = c.Call.Return()
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockConnRunnerRetireCall) Do(f func(protocol.ConnectionID)) *MockConnRunnerRetireCall {
+func (c *ConnRunnerRetireCall) Do(f func(protocol.ConnectionID)) *ConnRunnerRetireCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockConnRunnerRetireCall) DoAndReturn(f func(protocol.ConnectionID)) *MockConnRunnerRetireCall {
+func (c *ConnRunnerRetireCall) DoAndReturn(f func(protocol.ConnectionID)) *ConnRunnerRetireCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }

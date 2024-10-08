@@ -5,7 +5,6 @@
 //
 //	mockgen -typed -build_flags=-tags=gomock -package mocks -destination long_header_opener.go github.com/quic-go/quic-go/internal/handshake LongHeaderOpener
 //
-
 // Package mocks is a generated GoMock package.
 package mocks
 
@@ -48,31 +47,31 @@ func (m *MockLongHeaderOpener) DecodePacketNumber(arg0 protocol.PacketNumber, ar
 }
 
 // DecodePacketNumber indicates an expected call of DecodePacketNumber.
-func (mr *MockLongHeaderOpenerMockRecorder) DecodePacketNumber(arg0, arg1 any) *MockLongHeaderOpenerDecodePacketNumberCall {
+func (mr *MockLongHeaderOpenerMockRecorder) DecodePacketNumber(arg0, arg1 any) *LongHeaderOpenerDecodePacketNumberCall {
 	mr.mock.ctrl.T.Helper()
 	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DecodePacketNumber", reflect.TypeOf((*MockLongHeaderOpener)(nil).DecodePacketNumber), arg0, arg1)
-	return &MockLongHeaderOpenerDecodePacketNumberCall{Call: call}
+	return &LongHeaderOpenerDecodePacketNumberCall{Call: call}
 }
 
-// MockLongHeaderOpenerDecodePacketNumberCall wrap *gomock.Call
-type MockLongHeaderOpenerDecodePacketNumberCall struct {
+// LongHeaderOpenerDecodePacketNumberCall wrap *gomock.Call
+type LongHeaderOpenerDecodePacketNumberCall struct {
 	*gomock.Call
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *MockLongHeaderOpenerDecodePacketNumberCall) Return(arg0 protocol.PacketNumber) *MockLongHeaderOpenerDecodePacketNumberCall {
+func (c *LongHeaderOpenerDecodePacketNumberCall) Return(arg0 protocol.PacketNumber) *LongHeaderOpenerDecodePacketNumberCall {
 	c.Call = c.Call.Return(arg0)
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockLongHeaderOpenerDecodePacketNumberCall) Do(f func(protocol.PacketNumber, protocol.PacketNumberLen) protocol.PacketNumber) *MockLongHeaderOpenerDecodePacketNumberCall {
+func (c *LongHeaderOpenerDecodePacketNumberCall) Do(f func(protocol.PacketNumber, protocol.PacketNumberLen) protocol.PacketNumber) *LongHeaderOpenerDecodePacketNumberCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockLongHeaderOpenerDecodePacketNumberCall) DoAndReturn(f func(protocol.PacketNumber, protocol.PacketNumberLen) protocol.PacketNumber) *MockLongHeaderOpenerDecodePacketNumberCall {
+func (c *LongHeaderOpenerDecodePacketNumberCall) DoAndReturn(f func(protocol.PacketNumber, protocol.PacketNumberLen) protocol.PacketNumber) *LongHeaderOpenerDecodePacketNumberCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
@@ -84,31 +83,31 @@ func (m *MockLongHeaderOpener) DecryptHeader(arg0 []byte, arg1 *byte, arg2 []byt
 }
 
 // DecryptHeader indicates an expected call of DecryptHeader.
-func (mr *MockLongHeaderOpenerMockRecorder) DecryptHeader(arg0, arg1, arg2 any) *MockLongHeaderOpenerDecryptHeaderCall {
+func (mr *MockLongHeaderOpenerMockRecorder) DecryptHeader(arg0, arg1, arg2 any) *LongHeaderOpenerDecryptHeaderCall {
 	mr.mock.ctrl.T.Helper()
 	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DecryptHeader", reflect.TypeOf((*MockLongHeaderOpener)(nil).DecryptHeader), arg0, arg1, arg2)
-	return &MockLongHeaderOpenerDecryptHeaderCall{Call: call}
+	return &LongHeaderOpenerDecryptHeaderCall{Call: call}
 }
 
-// MockLongHeaderOpenerDecryptHeaderCall wrap *gomock.Call
-type MockLongHeaderOpenerDecryptHeaderCall struct {
+// LongHeaderOpenerDecryptHeaderCall wrap *gomock.Call
+type LongHeaderOpenerDecryptHeaderCall struct {
 	*gomock.Call
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *MockLongHeaderOpenerDecryptHeaderCall) Return() *MockLongHeaderOpenerDecryptHeaderCall {
+func (c *LongHeaderOpenerDecryptHeaderCall) Return() *LongHeaderOpenerDecryptHeaderCall {
 	c.Call = c.Call.Return()
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockLongHeaderOpenerDecryptHeaderCall) Do(f func([]byte, *byte, []byte)) *MockLongHeaderOpenerDecryptHeaderCall {
+func (c *LongHeaderOpenerDecryptHeaderCall) Do(f func([]byte, *byte, []byte)) *LongHeaderOpenerDecryptHeaderCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockLongHeaderOpenerDecryptHeaderCall) DoAndReturn(f func([]byte, *byte, []byte)) *MockLongHeaderOpenerDecryptHeaderCall {
+func (c *LongHeaderOpenerDecryptHeaderCall) DoAndReturn(f func([]byte, *byte, []byte)) *LongHeaderOpenerDecryptHeaderCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
@@ -123,31 +122,31 @@ func (m *MockLongHeaderOpener) Open(arg0, arg1 []byte, arg2 protocol.PacketNumbe
 }
 
 // Open indicates an expected call of Open.
-func (mr *MockLongHeaderOpenerMockRecorder) Open(arg0, arg1, arg2, arg3 any) *MockLongHeaderOpenerOpenCall {
+func (mr *MockLongHeaderOpenerMockRecorder) Open(arg0, arg1, arg2, arg3 any) *LongHeaderOpenerOpenCall {
 	mr.mock.ctrl.T.Helper()
 	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Open", reflect.TypeOf((*MockLongHeaderOpener)(nil).Open), arg0, arg1, arg2, arg3)
-	return &MockLongHeaderOpenerOpenCall{Call: call}
+	return &LongHeaderOpenerOpenCall{Call: call}
 }
 
-// MockLongHeaderOpenerOpenCall wrap *gomock.Call
-type MockLongHeaderOpenerOpenCall struct {
+// LongHeaderOpenerOpenCall wrap *gomock.Call
+type LongHeaderOpenerOpenCall struct {
 	*gomock.Call
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *MockLongHeaderOpenerOpenCall) Return(arg0 []byte, arg1 error) *MockLongHeaderOpenerOpenCall {
+func (c *LongHeaderOpenerOpenCall) Return(arg0 []byte, arg1 error) *LongHeaderOpenerOpenCall {
 	c.Call = c.Call.Return(arg0, arg1)
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockLongHeaderOpenerOpenCall) Do(f func([]byte, []byte, protocol.PacketNumber, []byte) ([]byte, error)) *MockLongHeaderOpenerOpenCall {
+func (c *LongHeaderOpenerOpenCall) Do(f func([]byte, []byte, protocol.PacketNumber, []byte) ([]byte, error)) *LongHeaderOpenerOpenCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockLongHeaderOpenerOpenCall) DoAndReturn(f func([]byte, []byte, protocol.PacketNumber, []byte) ([]byte, error)) *MockLongHeaderOpenerOpenCall {
+func (c *LongHeaderOpenerOpenCall) DoAndReturn(f func([]byte, []byte, protocol.PacketNumber, []byte) ([]byte, error)) *LongHeaderOpenerOpenCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }

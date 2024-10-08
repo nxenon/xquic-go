@@ -1,12 +1,13 @@
 package wire
 
 import (
-	"testing"
-
-	"github.com/stretchr/testify/require"
+	. "github.com/onsi/ginkgo/v2"
+	. "github.com/onsi/gomega"
 )
 
-func TestAckRangeLength(t *testing.T) {
-	require.EqualValues(t, 1, AckRange{Smallest: 10, Largest: 10}.Len())
-	require.EqualValues(t, 4, AckRange{Smallest: 10, Largest: 13}.Len())
-}
+var _ = Describe("ACK range", func() {
+	It("returns the length", func() {
+		Expect(AckRange{Smallest: 10, Largest: 10}.Len()).To(BeEquivalentTo(1))
+		Expect(AckRange{Smallest: 10, Largest: 13}.Len()).To(BeEquivalentTo(4))
+	})
+})

@@ -1,6 +1,8 @@
 package wire
 
 import (
+	"bytes"
+
 	"github.com/quic-go/quic-go/internal/protocol"
 	"github.com/quic-go/quic-go/quicvarint"
 )
@@ -11,25 +13,23 @@ type StreamDataBlockedFrame struct {
 	MaximumStreamData protocol.ByteCount
 }
 
-func parseStreamDataBlockedFrame(b []byte, _ protocol.Version) (*StreamDataBlockedFrame, int, error) {
-	startLen := len(b)
-	sid, l, err := quicvarint.Parse(b)
+func parseStreamDataBlockedFrame(r *bytes.Reader, _ protocol.VersionNumber) (*StreamDataBlockedFrame, error) {
+	sid, err := quicvarint.Read(r)
 	if err != nil {
-		return nil, 0, replaceUnexpectedEOF(err)
+		return nil, err
 	}
-	b = b[l:]
-	offset, l, err := quicvarint.Parse(b)
+	offset, err := quicvarint.Read(r)
 	if err != nil {
-		return nil, 0, replaceUnexpectedEOF(err)
+		return nil, err
 	}
 
 	return &StreamDataBlockedFrame{
 		StreamID:          protocol.StreamID(sid),
 		MaximumStreamData: protocol.ByteCount(offset),
-	}, startLen - len(b) + l, nil
+	}, nil
 }
 
-func (f *StreamDataBlockedFrame) Append(b []byte, _ protocol.Version) ([]byte, error) {
+func (f *StreamDataBlockedFrame) Append(b []byte, _ protocol.VersionNumber) ([]byte, error) {
 	b = append(b, 0x15)
 	b = quicvarint.Append(b, uint64(f.StreamID))
 	b = quicvarint.Append(b, uint64(f.MaximumStreamData))
@@ -37,6 +37,6 @@ func (f *StreamDataBlockedFrame) Append(b []byte, _ protocol.Version) ([]byte, e
 }
 
 // Length of a written frame
-func (f *StreamDataBlockedFrame) Length(protocol.Version) protocol.ByteCount {
-	return 1 + protocol.ByteCount(quicvarint.Len(uint64(f.StreamID))+quicvarint.Len(uint64(f.MaximumStreamData)))
+func (f *StreamDataBlockedFrame) Length(version protocol.VersionNumber) protocol.ByteCount {
+	return 1 + quicvarint.Len(uint64(f.StreamID)) + quicvarint.Len(uint64(f.MaximumStreamData))
 }

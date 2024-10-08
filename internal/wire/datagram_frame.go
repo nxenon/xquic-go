@@ -1,6 +1,7 @@
 package wire
 
 import (
+	"bytes"
 	"io"
 
 	"github.com/quic-go/quic-go/internal/protocol"
@@ -19,32 +20,32 @@ type DatagramFrame struct {
 	Data           []byte
 }
 
-func parseDatagramFrame(b []byte, typ uint64, _ protocol.Version) (*DatagramFrame, int, error) {
-	startLen := len(b)
+func parseDatagramFrame(r *bytes.Reader, typ uint64, _ protocol.VersionNumber) (*DatagramFrame, error) {
 	f := &DatagramFrame{}
 	f.DataLenPresent = typ&0x1 > 0
 
 	var length uint64
 	if f.DataLenPresent {
 		var err error
-		var l int
-		length, l, err = quicvarint.Parse(b)
+		len, err := quicvarint.Read(r)
 		if err != nil {
-			return nil, 0, replaceUnexpectedEOF(err)
+			return nil, err
 		}
-		b = b[l:]
-		if length > uint64(len(b)) {
-			return nil, 0, io.EOF
+		if len > uint64(r.Len()) {
+			return nil, io.EOF
 		}
+		length = len
 	} else {
-		length = uint64(len(b))
+		length = uint64(r.Len())
 	}
 	f.Data = make([]byte, length)
-	copy(f.Data, b)
-	return f, startLen - len(b) + int(length), nil
+	if _, err := io.ReadFull(r, f.Data); err != nil {
+		return nil, err
+	}
+	return f, nil
 }
 
-func (f *DatagramFrame) Append(b []byte, _ protocol.Version) ([]byte, error) {
+func (f *DatagramFrame) Append(b []byte, _ protocol.VersionNumber) ([]byte, error) {
 	typ := uint8(0x30)
 	if f.DataLenPresent {
 		typ ^= 0b1
@@ -58,7 +59,7 @@ func (f *DatagramFrame) Append(b []byte, _ protocol.Version) ([]byte, error) {
 }
 
 // MaxDataLen returns the maximum data length
-func (f *DatagramFrame) MaxDataLen(maxSize protocol.ByteCount, version protocol.Version) protocol.ByteCount {
+func (f *DatagramFrame) MaxDataLen(maxSize protocol.ByteCount, version protocol.VersionNumber) protocol.ByteCount {
 	headerLen := protocol.ByteCount(1)
 	if f.DataLenPresent {
 		// pretend that the data size will be 1 bytes
@@ -76,10 +77,10 @@ func (f *DatagramFrame) MaxDataLen(maxSize protocol.ByteCount, version protocol.
 }
 
 // Length of a written frame
-func (f *DatagramFrame) Length(_ protocol.Version) protocol.ByteCount {
+func (f *DatagramFrame) Length(_ protocol.VersionNumber) protocol.ByteCount {
 	length := 1 + protocol.ByteCount(len(f.Data))
 	if f.DataLenPresent {
-		length += protocol.ByteCount(quicvarint.Len(uint64(len(f.Data))))
+		length += quicvarint.Len(uint64(len(f.Data)))
 	}
 	return length
 }

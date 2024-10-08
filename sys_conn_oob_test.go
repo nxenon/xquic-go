@@ -11,6 +11,7 @@ import (
 	"golang.org/x/sys/unix"
 
 	"github.com/quic-go/quic-go/internal/protocol"
+	"github.com/quic-go/quic-go/internal/utils"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -26,8 +27,6 @@ func (c *oobRecordingConn) WriteMsgUDP(b, oob []byte, addr *net.UDPAddr) (n, oob
 	c.oobs = append(c.oobs, oob)
 	return c.UDPConn.WriteMsgUDP(b, oob, addr)
 }
-
-func isIPv4(ip net.IP) bool { return ip.To4() != nil }
 
 var _ = Describe("OOB Conn Test", func() {
 	runServer := func(network, address string) (*net.UDPConn, <-chan receivedPacket) {
@@ -124,7 +123,7 @@ var _ = Describe("OOB Conn Test", func() {
 
 			var p receivedPacket
 			Eventually(packetChan).Should(Receive(&p))
-			Expect(isIPv4(p.remoteAddr.(*net.UDPAddr).IP)).To(BeTrue())
+			Expect(utils.IsIPv4(p.remoteAddr.(*net.UDPAddr).IP)).To(BeTrue())
 			Expect(p.ecn).To(Equal(protocol.ECNCE))
 
 			// IPv6
@@ -137,7 +136,7 @@ var _ = Describe("OOB Conn Test", func() {
 			)
 
 			Eventually(packetChan).Should(Receive(&p))
-			Expect(isIPv4(p.remoteAddr.(*net.UDPAddr).IP)).To(BeFalse())
+			Expect(utils.IsIPv4(p.remoteAddr.(*net.UDPAddr).IP)).To(BeFalse())
 			Expect(p.ecn).To(Equal(protocol.ECT1))
 		})
 
@@ -234,9 +233,9 @@ var _ = Describe("OOB Conn Test", func() {
 
 			var p receivedPacket
 			Eventually(packetChan).Should(Receive(&p))
-			Expect(isIPv4(p.remoteAddr.(*net.UDPAddr).IP)).To(BeTrue())
+			Expect(utils.IsIPv4(p.remoteAddr.(*net.UDPAddr).IP)).To(BeTrue())
 			Expect(p.info).To(Not(BeNil()))
-			Expect(p.info.addr.Is4()).To(BeTrue())
+			Expect(p.info.addr.Is4In6() || p.info.addr.Is4()).To(BeTrue())
 			ip := p.info.addr.As4()
 			Expect(net.IP(ip[:])).To(Equal(ip4.To4()))
 
@@ -245,7 +244,7 @@ var _ = Describe("OOB Conn Test", func() {
 			sendPacket("udp6", &net.UDPAddr{IP: net.IPv6loopback, Port: port})
 
 			Eventually(packetChan).Should(Receive(&p))
-			Expect(isIPv4(p.remoteAddr.(*net.UDPAddr).IP)).To(BeFalse())
+			Expect(utils.IsIPv4(p.remoteAddr.(*net.UDPAddr).IP)).To(BeFalse())
 			Expect(p.info).To(Not(BeNil()))
 			Expect(net.IP(p.info.addr.AsSlice())).To(Equal(ip6))
 		})

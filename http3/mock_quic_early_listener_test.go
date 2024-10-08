@@ -5,7 +5,6 @@
 //
 //	mockgen -typed -package http3 -destination mock_quic_early_listener_test.go github.com/quic-go/quic-go/http3 QUICEarlyListener
 //
-
 // Package http3 is a generated GoMock package.
 package http3
 
@@ -51,31 +50,31 @@ func (m *MockQUICEarlyListener) Accept(arg0 context.Context) (quic.EarlyConnecti
 }
 
 // Accept indicates an expected call of Accept.
-func (mr *MockQUICEarlyListenerMockRecorder) Accept(arg0 any) *MockQUICEarlyListenerAcceptCall {
+func (mr *MockQUICEarlyListenerMockRecorder) Accept(arg0 any) *QUICEarlyListenerAcceptCall {
 	mr.mock.ctrl.T.Helper()
 	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Accept", reflect.TypeOf((*MockQUICEarlyListener)(nil).Accept), arg0)
-	return &MockQUICEarlyListenerAcceptCall{Call: call}
+	return &QUICEarlyListenerAcceptCall{Call: call}
 }
 
-// MockQUICEarlyListenerAcceptCall wrap *gomock.Call
-type MockQUICEarlyListenerAcceptCall struct {
+// QUICEarlyListenerAcceptCall wrap *gomock.Call
+type QUICEarlyListenerAcceptCall struct {
 	*gomock.Call
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *MockQUICEarlyListenerAcceptCall) Return(arg0 quic.EarlyConnection, arg1 error) *MockQUICEarlyListenerAcceptCall {
+func (c *QUICEarlyListenerAcceptCall) Return(arg0 quic.EarlyConnection, arg1 error) *QUICEarlyListenerAcceptCall {
 	c.Call = c.Call.Return(arg0, arg1)
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockQUICEarlyListenerAcceptCall) Do(f func(context.Context) (quic.EarlyConnection, error)) *MockQUICEarlyListenerAcceptCall {
+func (c *QUICEarlyListenerAcceptCall) Do(f func(context.Context) (quic.EarlyConnection, error)) *QUICEarlyListenerAcceptCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockQUICEarlyListenerAcceptCall) DoAndReturn(f func(context.Context) (quic.EarlyConnection, error)) *MockQUICEarlyListenerAcceptCall {
+func (c *QUICEarlyListenerAcceptCall) DoAndReturn(f func(context.Context) (quic.EarlyConnection, error)) *QUICEarlyListenerAcceptCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
@@ -89,31 +88,31 @@ func (m *MockQUICEarlyListener) Addr() net.Addr {
 }
 
 // Addr indicates an expected call of Addr.
-func (mr *MockQUICEarlyListenerMockRecorder) Addr() *MockQUICEarlyListenerAddrCall {
+func (mr *MockQUICEarlyListenerMockRecorder) Addr() *QUICEarlyListenerAddrCall {
 	mr.mock.ctrl.T.Helper()
 	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Addr", reflect.TypeOf((*MockQUICEarlyListener)(nil).Addr))
-	return &MockQUICEarlyListenerAddrCall{Call: call}
+	return &QUICEarlyListenerAddrCall{Call: call}
 }
 
-// MockQUICEarlyListenerAddrCall wrap *gomock.Call
-type MockQUICEarlyListenerAddrCall struct {
+// QUICEarlyListenerAddrCall wrap *gomock.Call
+type QUICEarlyListenerAddrCall struct {
 	*gomock.Call
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *MockQUICEarlyListenerAddrCall) Return(arg0 net.Addr) *MockQUICEarlyListenerAddrCall {
+func (c *QUICEarlyListenerAddrCall) Return(arg0 net.Addr) *QUICEarlyListenerAddrCall {
 	c.Call = c.Call.Return(arg0)
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockQUICEarlyListenerAddrCall) Do(f func() net.Addr) *MockQUICEarlyListenerAddrCall {
+func (c *QUICEarlyListenerAddrCall) Do(f func() net.Addr) *QUICEarlyListenerAddrCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockQUICEarlyListenerAddrCall) DoAndReturn(f func() net.Addr) *MockQUICEarlyListenerAddrCall {
+func (c *QUICEarlyListenerAddrCall) DoAndReturn(f func() net.Addr) *QUICEarlyListenerAddrCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
@@ -127,31 +126,31 @@ func (m *MockQUICEarlyListener) Close() error {
 }
 
 // Close indicates an expected call of Close.
-func (mr *MockQUICEarlyListenerMockRecorder) Close() *MockQUICEarlyListenerCloseCall {
+func (mr *MockQUICEarlyListenerMockRecorder) Close() *QUICEarlyListenerCloseCall {
 	mr.mock.ctrl.T.Helper()
 	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Close", reflect.TypeOf((*MockQUICEarlyListener)(nil).Close))
-	return &MockQUICEarlyListenerCloseCall{Call: call}
+	return &QUICEarlyListenerCloseCall{Call: call}
 }
 
-// MockQUICEarlyListenerCloseCall wrap *gomock.Call
-type MockQUICEarlyListenerCloseCall struct {
+// QUICEarlyListenerCloseCall wrap *gomock.Call
+type QUICEarlyListenerCloseCall struct {
 	*gomock.Call
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *MockQUICEarlyListenerCloseCall) Return(arg0 error) *MockQUICEarlyListenerCloseCall {
+func (c *QUICEarlyListenerCloseCall) Return(arg0 error) *QUICEarlyListenerCloseCall {
 	c.Call = c.Call.Return(arg0)
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockQUICEarlyListenerCloseCall) Do(f func() error) *MockQUICEarlyListenerCloseCall {
+func (c *QUICEarlyListenerCloseCall) Do(f func() error) *QUICEarlyListenerCloseCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockQUICEarlyListenerCloseCall) DoAndReturn(f func() error) *MockQUICEarlyListenerCloseCall {
+func (c *QUICEarlyListenerCloseCall) DoAndReturn(f func() error) *QUICEarlyListenerCloseCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }

@@ -1,6 +1,7 @@
 package wire
 
 import (
+	"bytes"
 	"errors"
 	"io"
 
@@ -19,41 +20,33 @@ type StreamFrame struct {
 	fromPool bool
 }
 
-func parseStreamFrame(b []byte, typ uint64, _ protocol.Version) (*StreamFrame, int, error) {
-	startLen := len(b)
+func parseStreamFrame(r *bytes.Reader, typ uint64, _ protocol.VersionNumber) (*StreamFrame, error) {
 	hasOffset := typ&0b100 > 0
 	fin := typ&0b1 > 0
 	hasDataLen := typ&0b10 > 0
 
-	streamID, l, err := quicvarint.Parse(b)
+	streamID, err := quicvarint.Read(r)
 	if err != nil {
-		return nil, 0, replaceUnexpectedEOF(err)
+		return nil, err
 	}
-	b = b[l:]
 	var offset uint64
 	if hasOffset {
-		offset, l, err = quicvarint.Parse(b)
+		offset, err = quicvarint.Read(r)
 		if err != nil {
-			return nil, 0, replaceUnexpectedEOF(err)
+			return nil, err
 		}
-		b = b[l:]
 	}
 
 	var dataLen uint64
 	if hasDataLen {
 		var err error
-		var l int
-		dataLen, l, err = quicvarint.Parse(b)
+		dataLen, err = quicvarint.Read(r)
 		if err != nil {
-			return nil, 0, replaceUnexpectedEOF(err)
-		}
-		b = b[l:]
-		if dataLen > uint64(len(b)) {
-			return nil, 0, io.EOF
+			return nil, err
 		}
 	} else {
 		// The rest of the packet is data
-		dataLen = uint64(len(b))
+		dataLen = uint64(r.Len())
 	}
 
 	var frame *StreamFrame
@@ -64,7 +57,7 @@ func parseStreamFrame(b []byte, typ uint64, _ protocol.Version) (*StreamFrame, i
 		// The STREAM frame can't be larger than the StreamFrame we obtained from the buffer,
 		// since those StreamFrames have a buffer length of the maximum packet size.
 		if dataLen > uint64(cap(frame.Data)) {
-			return nil, 0, io.EOF
+			return nil, io.EOF
 		}
 		frame.Data = frame.Data[:dataLen]
 	}
@@ -75,15 +68,18 @@ func parseStreamFrame(b []byte, typ uint64, _ protocol.Version) (*StreamFrame, i
 	frame.DataLenPresent = hasDataLen
 
 	if dataLen != 0 {
-		copy(frame.Data, b)
+		if _, err := io.ReadFull(r, frame.Data); err != nil {
+			return nil, err
+		}
 	}
 	if frame.Offset+frame.DataLen() > protocol.MaxByteCount {
-		return nil, 0, errors.New("stream data overflows maximum offset")
+		return nil, errors.New("stream data overflows maximum offset")
 	}
-	return frame, startLen - len(b) + int(dataLen), nil
+	return frame, nil
 }
 
-func (f *StreamFrame) Append(b []byte, _ protocol.Version) ([]byte, error) {
+// Write writes a STREAM frame
+func (f *StreamFrame) Append(b []byte, _ protocol.VersionNumber) ([]byte, error) {
 	if len(f.Data) == 0 && !f.Fin {
 		return nil, errors.New("StreamFrame: attempting to write empty frame without FIN")
 	}
@@ -112,7 +108,7 @@ func (f *StreamFrame) Append(b []byte, _ protocol.Version) ([]byte, error) {
 }
 
 // Length returns the total length of the STREAM frame
-func (f *StreamFrame) Length(protocol.Version) protocol.ByteCount {
+func (f *StreamFrame) Length(version protocol.VersionNumber) protocol.ByteCount {
 	length := 1 + quicvarint.Len(uint64(f.StreamID))
 	if f.Offset != 0 {
 		length += quicvarint.Len(uint64(f.Offset))
@@ -120,7 +116,7 @@ func (f *StreamFrame) Length(protocol.Version) protocol.ByteCount {
 	if f.DataLenPresent {
 		length += quicvarint.Len(uint64(f.DataLen()))
 	}
-	return protocol.ByteCount(length) + f.DataLen()
+	return length + f.DataLen()
 }
 
 // DataLen gives the length of data in bytes
@@ -130,14 +126,14 @@ func (f *StreamFrame) DataLen() protocol.ByteCount {
 
 // MaxDataLen returns the maximum data length
 // If 0 is returned, writing will fail (a STREAM frame must contain at least 1 byte of data).
-func (f *StreamFrame) MaxDataLen(maxSize protocol.ByteCount, _ protocol.Version) protocol.ByteCount {
-	headerLen := 1 + protocol.ByteCount(quicvarint.Len(uint64(f.StreamID)))
+func (f *StreamFrame) MaxDataLen(maxSize protocol.ByteCount, version protocol.VersionNumber) protocol.ByteCount {
+	headerLen := 1 + quicvarint.Len(uint64(f.StreamID))
 	if f.Offset != 0 {
-		headerLen += protocol.ByteCount(quicvarint.Len(uint64(f.Offset)))
+		headerLen += quicvarint.Len(uint64(f.Offset))
 	}
 	if f.DataLenPresent {
-		// Pretend that the data size will be 1 byte.
-		// If it turns out that varint encoding the length will consume 2 bytes, we need to adjust the data length afterward
+		// pretend that the data size will be 1 bytes
+		// if it turns out that varint encoding the length will consume 2 bytes, we need to adjust the data length afterwards
 		headerLen++
 	}
 	if headerLen > maxSize {
@@ -155,7 +151,7 @@ func (f *StreamFrame) MaxDataLen(maxSize protocol.ByteCount, _ protocol.Version)
 // The frame might not be split if:
 // * the size is large enough to fit the whole frame
 // * the size is too small to fit even a 1-byte frame. In that case, the frame returned is nil.
-func (f *StreamFrame) MaybeSplitOffFrame(maxSize protocol.ByteCount, version protocol.Version) (*StreamFrame, bool /* was splitting required */) {
+func (f *StreamFrame) MaybeSplitOffFrame(maxSize protocol.ByteCount, version protocol.VersionNumber) (*StreamFrame, bool /* was splitting required */) {
 	if maxSize >= f.Length(version) {
 		return nil, false
 	}

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net"
 	"reflect"
 	"time"
 
@@ -22,7 +23,7 @@ var _ = Describe("Config", func() {
 		})
 
 		It("validates a config with normal values", func() {
-			conf := populateConfig(&Config{
+			conf := populateServerConfig(&Config{
 				MaxIncomingStreams:     5,
 				MaxStreamReceiveWindow: 10,
 			})
@@ -50,24 +51,6 @@ var _ = Describe("Config", func() {
 			Expect(conf.MaxStreamReceiveWindow).To(BeEquivalentTo(uint64(quicvarint.Max)))
 			Expect(conf.MaxConnectionReceiveWindow).To(BeEquivalentTo(uint64(quicvarint.Max)))
 		})
-
-		It("increases too small packet sizes", func() {
-			conf := &Config{InitialPacketSize: 10}
-			Expect(validateConfig(conf)).To(Succeed())
-			Expect(conf.InitialPacketSize).To(BeEquivalentTo(1200))
-		})
-
-		It("clips too large packet sizes", func() {
-			conf := &Config{InitialPacketSize: protocol.MaxPacketBufferSize + 1}
-			Expect(validateConfig(conf)).To(Succeed())
-			Expect(conf.InitialPacketSize).To(BeEquivalentTo(protocol.MaxPacketBufferSize))
-		})
-
-		It("doesn't modify the InitialPacketSize if it is unset", func() {
-			conf := &Config{InitialPacketSize: 0}
-			Expect(validateConfig(conf)).To(Succeed())
-			Expect(conf.InitialPacketSize).To(BeZero())
-		})
 	})
 
 	configWithNonZeroNonFunctionFields := func() *Config {
@@ -86,7 +69,7 @@ var _ = Describe("Config", func() {
 			case "GetConfigForClient", "RequireAddressValidation", "GetLogWriter", "AllowConnectionWindowIncrease", "Tracer":
 				// Can't compare functions.
 			case "Versions":
-				f.Set(reflect.ValueOf([]Version{1, 2, 3}))
+				f.Set(reflect.ValueOf([]VersionNumber{1, 2, 3}))
 			case "ConnectionIDLength":
 				f.Set(reflect.ValueOf(8))
 			case "ConnectionIDGenerator":
@@ -117,8 +100,6 @@ var _ = Describe("Config", func() {
 				f.Set(reflect.ValueOf(true))
 			case "DisableVersionNegotiationPackets":
 				f.Set(reflect.ValueOf(true))
-			case "InitialPacketSize":
-				f.Set(reflect.ValueOf(uint16(1350)))
 			case "DisablePathMTUDiscovery":
 				f.Set(reflect.ValueOf(true))
 			case "Allow0RTT":
@@ -137,16 +118,19 @@ var _ = Describe("Config", func() {
 
 	Context("cloning", func() {
 		It("clones function fields", func() {
-			var calledAllowConnectionWindowIncrease, calledTracer bool
+			var calledAddrValidation, calledAllowConnectionWindowIncrease, calledTracer bool
 			c1 := &Config{
 				GetConfigForClient:            func(info *ClientHelloInfo) (*Config, error) { return nil, errors.New("nope") },
 				AllowConnectionWindowIncrease: func(Connection, uint64) bool { calledAllowConnectionWindowIncrease = true; return true },
+				RequireAddressValidation:      func(net.Addr) bool { calledAddrValidation = true; return true },
 				Tracer: func(context.Context, logging.Perspective, ConnectionID) *logging.ConnectionTracer {
 					calledTracer = true
 					return nil
 				},
 			}
 			c2 := c1.Clone()
+			c2.RequireAddressValidation(&net.UDPAddr{})
+			Expect(calledAddrValidation).To(BeTrue())
 			c2.AllowConnectionWindowIncrease(nil, 1234)
 			Expect(calledAllowConnectionWindowIncrease).To(BeTrue())
 			_, err := c2.GetConfigForClient(&ClientHelloInfo{})
@@ -161,15 +145,29 @@ var _ = Describe("Config", func() {
 		})
 
 		It("returns a copy", func() {
-			c1 := &Config{MaxIncomingStreams: 100}
+			c1 := &Config{
+				MaxIncomingStreams:       100,
+				RequireAddressValidation: func(net.Addr) bool { return true },
+			}
 			c2 := c1.Clone()
 			c2.MaxIncomingStreams = 200
+			c2.RequireAddressValidation = func(net.Addr) bool { return false }
 
 			Expect(c1.MaxIncomingStreams).To(BeEquivalentTo(100))
+			Expect(c1.RequireAddressValidation(&net.UDPAddr{})).To(BeTrue())
 		})
 	})
 
 	Context("populating", func() {
+		It("populates function fields", func() {
+			var calledAddrValidation bool
+			c1 := &Config{}
+			c1.RequireAddressValidation = func(net.Addr) bool { calledAddrValidation = true; return true }
+			c2 := populateConfig(c1)
+			c2.RequireAddressValidation(&net.UDPAddr{})
+			Expect(calledAddrValidation).To(BeTrue())
+		})
+
 		It("copies non-function fields", func() {
 			c := configWithNonZeroNonFunctionFields()
 			Expect(populateConfig(c)).To(Equal(c))
@@ -187,6 +185,11 @@ var _ = Describe("Config", func() {
 			Expect(c.MaxIncomingUniStreams).To(BeEquivalentTo(protocol.DefaultMaxIncomingUniStreams))
 			Expect(c.DisablePathMTUDiscovery).To(BeFalse())
 			Expect(c.GetConfigForClient).To(BeNil())
+		})
+
+		It("populates empty fields with default values, for the server", func() {
+			c := populateServerConfig(&Config{})
+			Expect(c.RequireAddressValidation).ToNot(BeNil())
 		})
 	})
 })

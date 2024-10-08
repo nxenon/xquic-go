@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"crypto/tls"
 	"log"
 	"net"
@@ -29,7 +28,7 @@ func main() {
 			ClientSessionCache: tls.NewLRUClientSessionCache(1),
 		},
 		false,
-		&utils.RTTStats{},
+		utils.NewRTTStats(),
 		nil,
 		utils.DefaultLogger.WithPrefix("client"),
 		protocol.Version1,
@@ -44,17 +43,17 @@ func main() {
 		&wire.TransportParameters{ActiveConnectionIDLimit: 2},
 		config,
 		false,
-		&utils.RTTStats{},
+		utils.NewRTTStats(),
 		nil,
 		utils.DefaultLogger.WithPrefix("server"),
 		protocol.Version1,
 	)
 
-	if err := client.StartHandshake(context.Background()); err != nil {
+	if err := client.StartHandshake(); err != nil {
 		log.Fatal(err)
 	}
 
-	if err := server.StartHandshake(context.Background()); err != nil {
+	if err := server.StartHandshake(); err != nil {
 		log.Fatal(err)
 	}
 

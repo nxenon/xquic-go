@@ -1,12 +1,13 @@
 package wire
 
 import (
+	"bytes"
 	"errors"
-	"math"
 	"sort"
 	"time"
 
 	"github.com/quic-go/quic-go/internal/protocol"
+	"github.com/quic-go/quic-go/internal/utils"
 	"github.com/quic-go/quic-go/quicvarint"
 )
 
@@ -21,105 +22,95 @@ type AckFrame struct {
 }
 
 // parseAckFrame reads an ACK frame
-func parseAckFrame(frame *AckFrame, b []byte, typ uint64, ackDelayExponent uint8, _ protocol.Version) (int, error) {
-	startLen := len(b)
+func parseAckFrame(frame *AckFrame, r *bytes.Reader, typ uint64, ackDelayExponent uint8, _ protocol.VersionNumber) error {
 	ecn := typ == ackECNFrameType
 
-	la, l, err := quicvarint.Parse(b)
+	la, err := quicvarint.Read(r)
 	if err != nil {
-		return 0, replaceUnexpectedEOF(err)
+		return err
 	}
-	b = b[l:]
 	largestAcked := protocol.PacketNumber(la)
-	delay, l, err := quicvarint.Parse(b)
+	delay, err := quicvarint.Read(r)
 	if err != nil {
-		return 0, replaceUnexpectedEOF(err)
+		return err
 	}
-	b = b[l:]
 
 	delayTime := time.Duration(delay*1<<ackDelayExponent) * time.Microsecond
 	if delayTime < 0 {
 		// If the delay time overflows, set it to the maximum encode-able value.
-		delayTime = time.Duration(math.MaxInt64)
+		delayTime = utils.InfDuration
 	}
 	frame.DelayTime = delayTime
 
-	numBlocks, l, err := quicvarint.Parse(b)
+	numBlocks, err := quicvarint.Read(r)
 	if err != nil {
-		return 0, replaceUnexpectedEOF(err)
+		return err
 	}
-	b = b[l:]
 
 	// read the first ACK range
-	ab, l, err := quicvarint.Parse(b)
+	ab, err := quicvarint.Read(r)
 	if err != nil {
-		return 0, replaceUnexpectedEOF(err)
+		return err
 	}
-	b = b[l:]
 	ackBlock := protocol.PacketNumber(ab)
 	if ackBlock > largestAcked {
-		return 0, errors.New("invalid first ACK range")
+		return errors.New("invalid first ACK range")
 	}
 	smallest := largestAcked - ackBlock
 	frame.AckRanges = append(frame.AckRanges, AckRange{Smallest: smallest, Largest: largestAcked})
 
 	// read all the other ACK ranges
 	for i := uint64(0); i < numBlocks; i++ {
-		g, l, err := quicvarint.Parse(b)
+		g, err := quicvarint.Read(r)
 		if err != nil {
-			return 0, replaceUnexpectedEOF(err)
+			return err
 		}
-		b = b[l:]
 		gap := protocol.PacketNumber(g)
 		if smallest < gap+2 {
-			return 0, errInvalidAckRanges
+			return errInvalidAckRanges
 		}
 		largest := smallest - gap - 2
 
-		ab, l, err := quicvarint.Parse(b)
+		ab, err := quicvarint.Read(r)
 		if err != nil {
-			return 0, replaceUnexpectedEOF(err)
+			return err
 		}
-		b = b[l:]
 		ackBlock := protocol.PacketNumber(ab)
 
 		if ackBlock > largest {
-			return 0, errInvalidAckRanges
+			return errInvalidAckRanges
 		}
 		smallest = largest - ackBlock
 		frame.AckRanges = append(frame.AckRanges, AckRange{Smallest: smallest, Largest: largest})
 	}
 
 	if !frame.validateAckRanges() {
-		return 0, errInvalidAckRanges
+		return errInvalidAckRanges
 	}
 
 	if ecn {
-		ect0, l, err := quicvarint.Parse(b)
+		ect0, err := quicvarint.Read(r)
 		if err != nil {
-			return 0, replaceUnexpectedEOF(err)
+			return err
 		}
-		b = b[l:]
 		frame.ECT0 = ect0
-		ect1, l, err := quicvarint.Parse(b)
+		ect1, err := quicvarint.Read(r)
 		if err != nil {
-			return 0, replaceUnexpectedEOF(err)
+			return err
 		}
-		b = b[l:]
 		frame.ECT1 = ect1
-		ecnce, l, err := quicvarint.Parse(b)
+		ecnce, err := quicvarint.Read(r)
 		if err != nil {
-			return 0, replaceUnexpectedEOF(err)
+			return err
 		}
-		b = b[l:]
 		frame.ECNCE = ecnce
 	}
 
-	return startLen - len(b), nil
+	return nil
 }
 
 // Append appends an ACK frame.
-func (f *AckFrame) Append(b []byte, _ protocol.Version) ([]byte, error) {
+func (f *AckFrame) Append(b []byte, _ protocol.VersionNumber) ([]byte, error) {
 	hasECN := f.ECT0 > 0 || f.ECT1 > 0 || f.ECNCE > 0
 	if hasECN {
 		b = append(b, ackECNFrameType)
@@ -152,7 +143,7 @@ func (f *AckFrame) Append(b []byte, _ protocol.Version) ([]byte, error) {
 }
 
 // Length of a written frame
-func (f *AckFrame) Length(_ protocol.Version) protocol.ByteCount {
+func (f *AckFrame) Length(_ protocol.VersionNumber) protocol.ByteCount {
 	largestAcked := f.AckRanges[0].Largest
 	numRanges := f.numEncodableAckRanges()
 
@@ -172,7 +163,7 @@ func (f *AckFrame) Length(_ protocol.Version) protocol.ByteCount {
 		length += quicvarint.Len(f.ECT1)
 		length += quicvarint.Len(f.ECNCE)
 	}
-	return protocol.ByteCount(length)
+	return length
 }
 
 // gets the number of ACK ranges that can be encoded
@@ -183,7 +174,7 @@ func (f *AckFrame) numEncodableAckRanges() int {
 	for i := 1; i < len(f.AckRanges); i++ {
 		gap, len := f.encodeAckRange(i)
 		rangeLen := quicvarint.Len(gap) + quicvarint.Len(len)
-		if protocol.ByteCount(length+rangeLen) > protocol.MaxAckFrameSize {
+		if length+rangeLen > protocol.MaxAckFrameSize {
 			// Writing range i would exceed the MaxAckFrameSize.
 			// So encode one range less than that.
 			return i - 1

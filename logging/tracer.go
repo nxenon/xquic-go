@@ -5,10 +5,8 @@ import "net"
 // A Tracer traces events.
 type Tracer struct {
 	SentPacket                   func(net.Addr, *Header, ByteCount, []Frame)
-	SentVersionNegotiationPacket func(_ net.Addr, dest, src ArbitraryLenConnectionID, _ []Version)
+	SentVersionNegotiationPacket func(_ net.Addr, dest, src ArbitraryLenConnectionID, _ []VersionNumber)
 	DroppedPacket                func(net.Addr, PacketType, ByteCount, PacketDropReason)
-	Debug                        func(name, msg string)
-	Close                        func()
 }
 
 // NewMultiplexedTracer creates a new tracer that multiplexes events to multiple tracers.
@@ -27,7 +25,7 @@ func NewMultiplexedTracer(tracers ...*Tracer) *Tracer {
 				}
 			}
 		},
-		SentVersionNegotiationPacket: func(remote net.Addr, dest, src ArbitraryLenConnectionID, versions []Version) {
+		SentVersionNegotiationPacket: func(remote net.Addr, dest, src ArbitraryLenConnectionID, versions []VersionNumber) {
 			for _, t := range tracers {
 				if t.SentVersionNegotiationPacket != nil {
 					t.SentVersionNegotiationPacket(remote, dest, src, versions)
@@ -38,20 +36,6 @@ func NewMultiplexedTracer(tracers ...*Tracer) *Tracer {
 			for _, t := range tracers {
 				if t.DroppedPacket != nil {
 					t.DroppedPacket(remote, typ, size, reason)
-				}
-			}
-		},
-		Debug: func(name, msg string) {
-			for _, t := range tracers {
-				if t.Debug != nil {
-					t.Debug(name, msg)
-				}
-			}
-		},
-		Close: func() {
-			for _, t := range tracers {
-				if t.Close != nil {
-					t.Close()
 				}
 			}
 		},
