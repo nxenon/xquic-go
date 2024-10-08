@@ -8,11 +8,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/quic-go/quic-go"
-	"github.com/quic-go/quic-go/internal/protocol"
-	"github.com/quic-go/quic-go/internal/qerr"
-	"github.com/quic-go/quic-go/internal/utils"
-	"github.com/quic-go/quic-go/logging"
+	"github.com/nxenon/xquic-go"
+	"github.com/nxenon/xquic-go/internal/protocol"
+	"github.com/nxenon/xquic-go/internal/qerr"
+	"github.com/nxenon/xquic-go/internal/utils"
+	"github.com/nxenon/xquic-go/logging"
 
 	"github.com/stretchr/testify/require"
 )

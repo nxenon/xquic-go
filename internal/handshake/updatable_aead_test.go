@@ -7,11 +7,11 @@ import (
 	"testing"
 	"time"
 
-	mocklogging "github.com/quic-go/quic-go/internal/mocks/logging"
-	"github.com/quic-go/quic-go/internal/protocol"
-	"github.com/quic-go/quic-go/internal/qerr"
-	"github.com/quic-go/quic-go/internal/utils"
-	"github.com/quic-go/quic-go/logging"
+	mocklogging "github.com/nxenon/xquic-go/internal/mocks/logging"
+	"github.com/nxenon/xquic-go/internal/protocol"
+	"github.com/nxenon/xquic-go/internal/qerr"
+	"github.com/nxenon/xquic-go/internal/utils"
+	"github.com/nxenon/xquic-go/logging"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"

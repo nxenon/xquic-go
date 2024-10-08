@@ -8,11 +8,11 @@ import (
 
 	"golang.org/x/exp/rand"
 
-	"github.com/quic-go/quic-go/internal/ackhandler"
-	"github.com/quic-go/quic-go/internal/handshake"
-	"github.com/quic-go/quic-go/internal/protocol"
-	"github.com/quic-go/quic-go/internal/qerr"
-	"github.com/quic-go/quic-go/internal/wire"
+	"github.com/nxenon/xquic-go/internal/ackhandler"
+	"github.com/nxenon/xquic-go/internal/handshake"
+	"github.com/nxenon/xquic-go/internal/protocol"
+	"github.com/nxenon/xquic-go/internal/qerr"
+	"github.com/nxenon/xquic-go/internal/wire"
 )
 
 var errNothingToPack = errors.New("nothing to pack")

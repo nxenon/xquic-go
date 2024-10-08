@@ -8,7 +8,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/quic-go/quic-go/internal/protocol"
+	"github.com/nxenon/xquic-go/internal/protocol"
 	"github.com/stretchr/testify/require"
 )
 

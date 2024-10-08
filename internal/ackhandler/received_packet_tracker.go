@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/quic-go/quic-go/internal/protocol"
-	"github.com/quic-go/quic-go/internal/utils"
-	"github.com/quic-go/quic-go/internal/wire"
+	"github.com/nxenon/xquic-go/internal/protocol"
+	"github.com/nxenon/xquic-go/internal/utils"
+	"github.com/nxenon/xquic-go/internal/wire"
 )
 
 // number of ack-eliciting packets received before sending an ack.

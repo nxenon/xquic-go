@@ -6,10 +6,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/quic-go/quic-go/internal/ackhandler"
-	"github.com/quic-go/quic-go/internal/flowcontrol"
-	"github.com/quic-go/quic-go/internal/protocol"
-	"github.com/quic-go/quic-go/internal/wire"
+	"github.com/nxenon/xquic-go/internal/ackhandler"
+	"github.com/nxenon/xquic-go/internal/flowcontrol"
+	"github.com/nxenon/xquic-go/internal/protocol"
+	"github.com/nxenon/xquic-go/internal/wire"
 )
 
 type deadlineError struct{}
