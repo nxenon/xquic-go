@@ -11,7 +11,20 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"sync"
 )
+
+// Constants for timing headers used by the synchronization method
+const (
+	ClientTimeHeaderRTTUs      = "X-Client-Time-RTT-Us"
+	ClientTimeHeaderPostLastUs = "X-Client-Time-Post-Last-Us"
+)
+
+// RequestStreamPair couples a request with its initialized QUIC stream
+type RequestStreamPair struct {
+	Req *http.Request
+	S   quic.Stream
+}
 
 func CalculateIntegerEncodingLengthValue(l int64) []byte {
 	if l < 0 {
@@ -290,105 +303,181 @@ func SendLastBytesOfStreams(allStreamsWithLastByte map[quic.Stream][]byte) {
 	}
 }
 
-func SendRequestsWithLastFrameSynchronizationMethod(quicConn quic.Connection,
+func SendRequestsWithLastFrameSynchronizationMethod(
+	quicConn quic.Connection,
 	allRequests []*http.Request,
 	lastByteNum int,
 	sleepMillisecondsBeforeSendingLastByte int,
 	setContentLength bool,
 ) map[*http.Request]*http.Response {
 
-	var allStreams map[*http.Request]quic.Stream
-	allStreams = make(map[*http.Request]quic.Stream)
-	var allStreamsWithLastByte map[quic.Stream][]byte
-	allStreamsWithLastByte = make(map[quic.Stream][]byte)
-
-	if lastByteNum < 0 {
-		panic("Last Byte Number param can not be below 0!")
-	} else if lastByteNum == 0 {
-		fmt.Println("0 frame")
-		for _, request := range allRequests {
-			var headersAndDataBytes []byte
-
-			headersFrameByte := GetRequestHeadersBytes(*request, setContentLength)
-			dataFrameBytes := GetDataFrameBytesWithLengthMinusLastByteNum(*request, lastByteNum)
-
-			// all bytes except last byte
-			headersAndDataBytes = append(headersFrameByte, dataFrameBytes...)
-
-			// send headers+data except last byte
-			biStream := GetBidirectionalStream(quicConn)
-
-			allStreams[request] = biStream // for getting responses
-			SendRequestBytesInStream(biStream, headersAndDataBytes)
-
-		}
-
-		time.Sleep(time.Duration(sleepMillisecondsBeforeSendingLastByte) * time.Millisecond)
-
-		CloseAllStreams(allStreams)
-		streamsResponseMap := ReadFromAllStreams(allStreams)
-
-		return streamsResponseMap
-	} else {
-		for _, request := range allRequests {
-			var headersAndDataBytesMinusLastByte []byte
-
-			headersFrameByte := GetRequestHeadersBytes(*request, setContentLength)
-			dataFrameBytes := GetDataFrameBytesWithLengthMinusLastByteNum(*request, lastByteNum)
-
-			allDataBytesExceptLastByte := dataFrameBytes[:len(dataFrameBytes)-lastByteNum]
-
-			// all bytes except last byte
-			headersAndDataBytesMinusLastByte = append(headersFrameByte, allDataBytesExceptLastByte...)
-
-			finalByte := dataFrameBytes[len(dataFrameBytes)-lastByteNum:] // last byte
-			finalByteDataFrame := GetLastByteDataFrame(finalByte)         // last byte data frame
-
-			// send headers+data except last byte
-			biStream := GetBidirectionalStream(quicConn)
-
-			allStreamsWithLastByte[biStream] = finalByteDataFrame // for sending last byte
-			allStreams[request] = biStream                        // for getting responses
-			SendRequestBytesInStream(biStream, headersAndDataBytesMinusLastByte)
-
-		}
-
-		time.Sleep(time.Duration(sleepMillisecondsBeforeSendingLastByte) * time.Millisecond)
-
-		// send all last bytes
-		SendLastBytesOfStreams(allStreamsWithLastByte)
-
-		CloseAllStreams(allStreams)
-		streamsResponseMap := ReadFromAllStreams(allStreams)
-
-		return streamsResponseMap
+	type streamState struct {
+		req       *http.Request
+		s         quic.Stream
+		lastChunk []byte
+		hasLast   bool
 	}
+
+	out := make(map[*http.Request]*http.Response)
+	var mu sync.Mutex
+	var wg sync.WaitGroup
+
+	states := make([]streamState, 0, len(allRequests))
+	startPre := make(map[quic.Stream]time.Time) 
+	startPost := make(map[quic.Stream]time.Time) 
+
+	// 1) Phase 1: Open all streams and send initial payloads (Batching initial writes)
+	for _, request := range allRequests {
+		headersFrameByte := GetRequestHeadersBytes(*request, setContentLength)
+
+		var firstPayload []byte
+		var finalData []byte
+		hasBody := request.Body != nil
+
+		if lastByteNum > 0 && hasBody {
+			dataFrameBytes := GetDataFrameBytesWithLengthMinusLastByteNum(*request, lastByteNum)
+			allDataBytesExceptLast := dataFrameBytes[:len(dataFrameBytes)-lastByteNum]
+			firstPayload = append(headersFrameByte, allDataBytesExceptLast...)
+
+			finalByte := dataFrameBytes[len(dataFrameBytes)-lastByteNum:]
+			finalData = GetLastByteDataFrame(finalByte)
+		} else if hasBody {
+			firstPayload = append(headersFrameByte, GetDataFrameBytes(*request)...)
+		} else {
+			firstPayload = headersFrameByte
+		}
+
+		s := GetBidirectionalStream(quicConn)
+
+		// Record pre-write time sequentially on the main thread
+		startPre[s] = time.Now()
+		if err := SendRequestBytesInStream(s, firstPayload); err != nil {
+			fmt.Printf("Error sending initial bytes on Stream %d: %v\n", s.StreamID(), err)
+			continue
+		}
+
+		st := streamState{
+			req:       request,
+			s:         s,
+			lastChunk: finalData,
+			hasLast:   (lastByteNum > 0 && hasBody),
+		}
+		states = append(states, st)
+	}
+
+	// 2) Phase 2: Hold/Sleep before releasing final synchronization frames (Maintains old logic)
+	if lastByteNum > 0 {
+		time.Sleep(time.Duration(sleepMillisecondsBeforeSendingLastByte) * time.Millisecond)
+	}
+
+	// 3) Phase 3: Send last chunks and close streams (Recording startPost safely on main thread)
+	for i := range states {
+		st := &states[i]
+		if st.hasLast {
+			if err := SendRequestBytesInStream(st.s, st.lastChunk); err != nil {
+				fmt.Printf("Error sending last byte on Stream %d: %v\n", st.s.StreamID(), err)
+				continue
+			}
+		}
+		
+		// Send FIN frame to let the server know we are done writing
+		if err := st.s.Close(); err != nil {
+			fmt.Printf("Error closing (FIN) Stream %d: %v\n", st.s.StreamID(), err)
+		}
+		startPost[st.s] = time.Now()
+	}
+
+	// 4) Phase 4: Spin up concurrent background readers AFTER all network writes are complete.
+	for _, st := range states {
+		t0 := startPre[st.s]
+		t1 := startPost[st.s]
+
+		wg.Add(1)
+		go func(req *http.Request, stream quic.Stream, t0, t1 time.Time) {
+			defer wg.Done()
+			res, err := ReadOneStream(stream)
+			if err != nil {
+				fmt.Printf("Stream %d read error: %v\n", stream.StreamID(), err)
+				return
+			}
+			
+			// Safely read from stack-local copies of timestamps
+			res.Header.Set(ClientTimeHeaderRTTUs, strconv.FormatInt(time.Since(t0).Microseconds(), 10))
+			res.Header.Set(ClientTimeHeaderPostLastUs, strconv.FormatInt(time.Since(t1).Microseconds(), 10))
+			
+			mu.Lock()
+			out[req] = res
+			mu.Unlock()
+		}(st.req, st.s, t0, t1) // <--- Values bound safely here
+	}
+
+	// 5) Wait for all concurrent readers to finish
+	wg.Wait()
+	return out
 }
 
-func SendRequestsWithoutBodyWithinASinglePacket(quicConn quic.Connection,
+func SendRequestsWithoutBodyWithinASinglePacket(
+	quicConn quic.Connection,
 	allRequests []*http.Request,
 ) map[*http.Request]*http.Response {
 
-	var allStreams map[*http.Request]quic.Stream
-	allStreams = make(map[*http.Request]quic.Stream)
-	var allStreamsWithHeadersByte map[quic.Stream][]byte
-	allStreamsWithHeadersByte = make(map[quic.Stream][]byte)
+	out := make(map[*http.Request]*http.Response)
+	var mu sync.Mutex
+	var wg sync.WaitGroup
 
+	allStreams := make(map[*http.Request]quic.Stream)
+	allStreamsWithHeadersByte := make(map[quic.Stream][]byte)
+	startPre := make(map[quic.Stream]time.Time)
+
+	// 1) Prime all streams and record pre-write timestamps sequentially
 	for _, request := range allRequests {
 		headersFrameByte := GetRequestHeadersBytes(*request, true)
-		// send headers+data except last byte
 		biStream := GetBidirectionalStream(quicConn)
+		
+		// Record the start time right before data goes out
+		startPre[biStream] = time.Now() 
+		
 		allStreamsWithHeadersByte[biStream] = headersFrameByte
-		allStreams[request] = biStream // for getting responses
+		allStreams[request] = biStream 
 	}
 
-	//time.Sleep(time.Duration(sleepMillisecondsBeforeSendingLastByte) * time.Millisecond)
+	// 2) Burst all headers out across the network within a single packet window
+	SendLastBytesOfStreams(allStreamsWithHeadersByte) 
 
-	// send all last bytes
-	SendLastBytesOfStreams(allStreamsWithHeadersByte) //
-
+	// 3) Close streams (FIN) so the server begins processing the batch
 	CloseAllStreams(allStreams)
-	streamsResponseMap := ReadFromAllStreams(allStreams)
+	
+	// Capture the exact moment the entire single-packet burst finished processing
+	startPostTime := time.Now()
 
-	return streamsResponseMap
+	// 4) Spawn concurrent readers to get highly precise, per-stream response timings
+	for request, stream := range allStreams {
+		t0 := startPre[stream]
+		t1 := startPostTime // All single-packet streams share this joint completion line
+
+		wg.Add(1)
+		// Pass t0 and t1 explicitly to isolate them to the goroutine's stack
+		go func(req *http.Request, st quic.Stream, t0, t1 time.Time) {
+			defer wg.Done()
+			
+			res, err := ReadOneStream(st)
+			if err != nil {
+				fmt.Printf("Stream %d read error: %v\n", st.StreamID(), err)
+				return
+			}
+			
+			// Safely stamp the duration metrics onto the specific response headers
+			res.Header.Set(ClientTimeHeaderRTTUs, strconv.FormatInt(time.Since(t0).Microseconds(), 10))
+			res.Header.Set(ClientTimeHeaderPostLastUs, strconv.FormatInt(time.Since(t1).Microseconds(), 10))
+			
+			// Lock map access to avoid write collisions
+			mu.Lock()
+			out[req] = res
+			mu.Unlock()
+		}(request, stream, t0, t1)
+	}
+
+	// 5) Wait for all concurrent stream reads to wrap up
+	wg.Wait()
+	return out
 }
