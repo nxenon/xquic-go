@@ -136,6 +136,9 @@ See [Exploit](./exploit) Directory. It contains:
 - [Last Frame Synchronization for Requests without Body (GET requests within a single packet)](exploit/README.md#last-frame-synchronization-for-requests-without-body-get-requests-within-a-single-packet)
 - [Last Frame Synchronization for Requests without Body (GET requests with FAKE DATA Frames)](exploit/README.md#last-frame-synchronization-for-requests-without-body-get-requests-with-fake-data-frames)
 
+## Talk / Presentation
+We presented this research at a PortSwigger Discord event. Watch the recording here: [QUIC-er Races: HTTP/3 won’t save you from TOCTOU vulnerabilities](https://youtu.be/BaEQKgW-8iY)
+
 ## Lab (HTTP/2/3 Web Application)
 For testing exploits see [Rc-H3-WebApp](https://github.com/nxenon/rc-h3-webapp/) repo.
 
